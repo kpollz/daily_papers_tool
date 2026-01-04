@@ -21,13 +21,13 @@ def download_pdf(url, save_path):
         print(f"Failed to download {url}: {e}")
         return False
 
-def download_all_papers(papers, download_dir="papers"):
+def download_all_papers(papers, download_dir="papers", number_of_papers=None):
     """Downloads all PDFs for a list of papers."""
     if not os.path.exists(download_dir):
-        os.makedirs(download_dir)
+        os.makedirs(download_dir, exist_ok=True)
     
     downloaded_files = []
-    for paper in papers:
+    for paper in papers[:number_of_papers]:
         paper_id = paper['id']
         pdf_url = paper['pdf_url']
         # Clean filename: replace / with _ if any
