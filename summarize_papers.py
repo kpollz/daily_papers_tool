@@ -12,26 +12,30 @@ def summarize_paper(paper_info, text, model="gpt-4.1-mini"):
     # with the default configuration.
     
     prompt = f"""
-    You are a research assistant. Please summarize the following research paper based on its title and extracted text.
+    Bạn là một research assistant. Hãy tóm tắt bài nghiên cứu sau đây dựa trên tiêu đề và đoạn văn trích dẫn..
     
-    Title: {paper_info['title']}
+    Tiêu đề: {paper_info['title']}
     
-    Extracted Text (first few pages):
+    Văn bản được trích xuất (Một vài trang đầu):
     {text[:15000]}  # Limit text to avoid token limits
     
-    Please provide the summary in the following format:
-    - Main Problem: (What is the core issue the paper addresses?)
-    - Main Idea: (What is the proposed solution or approach?)
-    - Main Results: (What are the key findings or performance metrics?)
-    - Conclusion & Future Works: (What is the final takeaway and what's next?)
+    Vui lòng cung cấp bản tóm tắt theo CHÍNH XÁC định dạng sau:
+    ### Main Problem: (Vấn đề cốt lõi mà bài báo đề cập là gì?)
+    ### Main Idea: (Giải pháp hoặc phương pháp đề xuất là gì?)
+    ### Main Results: (Những phát hiện chính hoặc các chỉ số hiệu suất là gì?)
+    ### Conclusion & Future Works: (Thông điệp cuối cùng và hướng nghiên cứu tiếp theo là gì?)
 
+    Lưu ý: 
+    - Tất cả nội dung chỉ dựa trên văn bản được trích xuất.
+    - Không sử dụng ký tự đặc biệt, chỉ sử dụng thuần LaTex-style cho Markdown.
+    - Câu trả lời có ngôn ngữ là Tiếng Việt (trừ tên đề mục).
     """
     
     try:
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that summarizes research papers accurately and concisely."},
+                {"role": "system", "content": "Bạn là một trợ lý đắc lực, tóm tắt các bài nghiên cứu một cách chính xác và ngắn gọn."},
                 {"role": "user", "content": prompt}
             ]
         )
