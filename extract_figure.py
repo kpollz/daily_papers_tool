@@ -3,13 +3,20 @@ import re
 import tarfile
 import subprocess
 import shutil
+import requests
+import fitz  # PyMuPDF
 
 def download_source(paper_id, save_path):
     """Downloads the ArXiv source archive."""
     url = f"https://arxiv.org/e-print/{paper_id}"
     try:
-        # Use wget as it was more reliable in testing
-        subprocess.run(["wget", url, "-O", save_path], check=True, capture_output=True)
+        # Use requests for cross-platform compatibility
+        response = requests.get(url, stream=True, timeout=30)
+        response.raise_for_status()
+        
+        with open(save_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
         return True
     except Exception as e:
         print(f"Error downloading source for {paper_id}: {e}")
@@ -106,9 +113,16 @@ def extract_first_figure(paper_id, output_dir):
                 if ext.lower() == ".pdf":
                     try:
                         png_path = os.path.join(output_dir, f"{paper_id}_overview.png")
-                        # Use poppler-utils (pdftoppm) which is pre-installed
-                        subprocess.run(["pdftoppm", "-png", "-singlefile", dest_path, os.path.splitext(png_path)[0]], check=True)
-                        return f"{paper_id}_overview.png"
+                        # Use PyMuPDF for cross-platform PDF to PNG conversion
+                        doc = fitz.open(dest_path)
+                        if len(doc) > 0:
+                            page = doc[0]  # Get first page
+                            mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for better quality
+                            pix = page.get_pixmap(matrix=mat)
+                            pix.save(png_path)
+                            doc.close()
+                            return f"{paper_id}_overview.png"
+                        doc.close()
                     except Exception as e:
                         print(f"PDF to PNG conversion failed: {e}")
                         return f"{paper_id}_overview{ext}"
@@ -127,7 +141,7 @@ def extract_first_figure(paper_id, output_dir):
     return None
 
 if __name__ == "__main__":
-    paper_id = "2512.23959"
+    paper_id = "2512.24615"
     output_dir = "test_figures"
     os.makedirs(output_dir, exist_ok=True)
     fig = extract_first_figure(paper_id, output_dir)

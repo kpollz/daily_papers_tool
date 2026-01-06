@@ -1,5 +1,6 @@
 import os
-os.environ['OPENAI_API_KEY'] = 'AIzaSyCVb7t9Znr4FQjKPULJkIdu16uE94LLflY'
+from dotenv import load_dotenv
+load_dotenv()
 import sys
 import argparse
 from datetime import datetime
@@ -90,7 +91,7 @@ def run_daily_digest(date_str, model="gpt-4.1-mini"):
         # Extract overview figure
         print(f"Extracting overview figure for {paper['id']}...")
         figure_filename = extract_first_figure(paper['id'], download_dir)
-        
+        print(figure_filename)
         summary_entry = {
             'paper': paper,
             'summary': summary_text
