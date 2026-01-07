@@ -7,7 +7,7 @@ __pycache__/
 *.so
 *.vscode/
 *papers/
-*summaries/
+# *summaries/
 # Distribution / packaging
 .Python
 build/
