@@ -73,7 +73,7 @@ def run_daily_digest(date_str, model="gpt-4.1-mini"):
     # 2. Download all the papers into a date-specific folder
     print(f"Phase 2: Downloading PDFs into papers/{date_str}...")
     download_dir = os.path.join("papers", date_str)
-    download_all_papers(papers, download_dir=download_dir, number_of_papers=2)
+    download_all_papers(papers, download_dir=download_dir)
     
     # 3 & 4. Read and Summarize each paper
     print("Phase 3 & 4: Reading and Summarizing papers...")

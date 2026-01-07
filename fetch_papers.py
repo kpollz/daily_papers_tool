@@ -39,7 +39,7 @@ def fetch_daily_papers(date_str=None):
 
 if __name__ == "__main__":
     # Test with a specific date
-    test_date = "2026-01-05"
+    test_date = "2026-01-06"
     print(f"Fetching papers for {test_date}...")
     papers = fetch_daily_papers(test_date)
     print(f"Found {len(papers)} papers.")
