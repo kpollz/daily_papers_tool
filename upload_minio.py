@@ -27,7 +27,7 @@ def upload_to_minio(file_path, object_name):
     """
     try:
         # Get credentials from environment variables
-        minio_endpoint = os.getenv('MINIO_ENDPOINT', 'minio.smartsolar.io.vn')
+        minio_endpoint = os.getenv('MINIO_ENDPOINT', 'minio-api.smartsolar.io.vn')
         minio_access_key = os.getenv('MINIO_ACCESS_KEY')
         minio_secret_key = os.getenv('MINIO_SECRET_KEY')
         minio_bucket = os.getenv('MINIO_BUCKET', 'dtung.vu')
