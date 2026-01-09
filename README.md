@@ -52,25 +52,25 @@ An automated tool that fetches, downloads, and summarizes daily trending papers 
 ### Basic Usage (Today's Date, OpenAI GPT-4 mini)
 
 ```bash
-python3 daily_papers_tool.py
+python daily_papers_tool.py
 ```
 
 ### Specific Date with Default Model
 
 ```bash
-python3 daily_papers_tool.py --date 2026-01-02
+python daily_papers_tool.py --date 2026-01-02
 ```
 
 ### Using Google Gemini
 
 ```bash
-python3 daily_papers_tool.py --model gemini-2.5-flash
+python daily_papers_tool.py --model gemini-2.5-flash
 ```
 
 ### Specific Date with Gemini
 
 ```bash
-python3 daily_papers_tool.py --date 2026-01-02 --model gemini-2.5-flash
+python daily_papers_tool.py --date 2026-01-02 --model gemini-2.5-flash
 ```
 
 ## Command-Line Arguments

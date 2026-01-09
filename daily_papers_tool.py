@@ -13,6 +13,7 @@ from fetch_papers import fetch_daily_papers
 from download_papers import download_all_papers
 from summarize_papers import extract_text_from_pdf, summarize_paper
 from extract_figure import extract_first_figure
+from upload_minio import upload_to_minio
 
 def generate_markdown_report(summaries, date_str, model_name):
     """Generates a comprehensive Markdown report from the paper summaries."""
@@ -89,17 +90,16 @@ def run_daily_digest(date_str, model="gpt-4.1-mini"):
         summary_text = summarize_paper(paper, text, model=model)
         
         # Extract overview figure
-        print(f"Extracting overview figure for {paper['id']}...")
-        figure_filename = extract_first_figure(paper['id'], download_dir)
-        print(figure_filename)
+        # print(f"Extracting overview figure for {paper['id']}...")
+        # figure_filename = extract_first_figure(paper['id'], download_dir)
         summary_entry = {
             'paper': paper,
             'summary': summary_text
         }
         
-        if figure_filename:
-            summary_entry['figure_path'] = os.path.join(download_dir, figure_filename)
-            print(f"Figure extracted: {summary_entry['figure_path']}")
+        # if figure_filename:
+        #     summary_entry['figure_path'] = os.path.join(download_dir, figure_filename)
+        #     print(f"Figure extracted: {summary_entry['figure_path']}")
         
         summaries.append(summary_entry)
         
@@ -122,8 +122,12 @@ def run_daily_digest(date_str, model="gpt-4.1-mini"):
     with open(report_filename, 'w', encoding='utf-8') as f:
         f.write(markdown_report)
         
-    # Note: We don't clean up the date folder if it contains figures
     print(f"--- Digest Complete. Report saved to {report_filename} ---")
+    
+    # 6. Upload to MinIO
+    print("Phase 6: Uploading to MinIO...")
+    minio_object_name = f"summaries/daily_digest_{date_str}.md"
+    upload_to_minio(report_filename, minio_object_name)
         
     return report_filename
 
