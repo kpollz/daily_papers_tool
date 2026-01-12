@@ -15,7 +15,7 @@ def get_minio_client():
     Returns:
         Minio: MinIO client instance or None if credentials are missing
     """
-    minio_endpoint = os.getenv('MINIO_ENDPOINT', 'minio.smartsolar.io.vn')
+    minio_endpoint = os.getenv('MINIO_ENDPOINT', 'minio-api.smartsolar.io.vn')
     minio_port = os.getenv('MINIO_PORT', '9000')
     minio_access_key = os.getenv('MINIO_ACCESS_KEY')
     minio_secret_key = os.getenv('MINIO_SECRET_KEY')
@@ -26,24 +26,40 @@ def get_minio_client():
         return None
     
     # Parse endpoint to extract host and port
+    # Logic: If using HTTPS (secure=True), don't add port (assumes reverse proxy)
+    # If using HTTP (secure=False), add port if specified
     if minio_endpoint.startswith('http://') or minio_endpoint.startswith('https://'):
         parsed_endpoint = urlparse(minio_endpoint)
         endpoint_host = parsed_endpoint.hostname
-        endpoint_port = parsed_endpoint.port if parsed_endpoint.port else int(minio_port)
+        # If port is explicitly in URL, use it
+        if parsed_endpoint.port:
+            endpoint_port = parsed_endpoint.port
+        # If using HTTPS and no port in URL, don't add port (reverse proxy)
+        elif minio_secure:
+            endpoint_port = None
+        # If using HTTP and no port in URL, use default port
+        else:
+            endpoint_port = int(minio_port) if minio_port else None
     else:
         if ':' in minio_endpoint:
             endpoint_host, port_str = minio_endpoint.split(':', 1)
             endpoint_port = int(port_str)
         else:
             endpoint_host = minio_endpoint
-            endpoint_port = int(minio_port) if minio_port else None
+            # If using HTTPS, don't add port (reverse proxy)
+            if minio_secure:
+                endpoint_port = None
+            else:
+                endpoint_port = int(minio_port) if minio_port else None
     
+    # Build endpoint string
     if endpoint_port:
         endpoint = f"{endpoint_host}:{endpoint_port}"
     else:
         endpoint = endpoint_host
     
     try:
+        print(f"Creating MinIO client with endpoint: {endpoint}")
         client = Minio(
             endpoint,
             access_key=minio_access_key,
