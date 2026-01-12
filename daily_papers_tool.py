@@ -9,11 +9,14 @@ import time
 # Add current directory to path to import local modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from fetch_papers import fetch_daily_papers
-from download_papers import download_all_papers
-from summarize_papers import extract_text_from_pdf, summarize_paper
-from extract_figure import extract_first_figure
-from upload_minio import upload_to_minio
+from summary_utils import (
+    fetch_daily_papers,
+    download_all_papers,
+    extract_text_from_pdf,
+    summarize_paper,
+    extract_first_figure,
+    upload_to_minio
+)
 
 def generate_markdown_report(summaries, date_str, model_name):
     """Generates a comprehensive Markdown report from the paper summaries."""
