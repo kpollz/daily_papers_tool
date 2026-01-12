@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  wiki-sync-service:
+    build: .
+    container_name: wiki-sync-service
+    restart: unless-stopped
+    environment:
+      # MinIO configuration
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio.smartsolar.io.vn}
+      - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET:-dtung.vu}
+      - MINIO_SECURE=${MINIO_SECURE:-true}
+      
+      # Wiki.js configuration
+      - WIKI_URL=${WIKI_URL}
+      - WIKI_API_TOKEN=${WIKI_API_TOKEN}
+      - WIKI_LOCALE=${WIKI_LOCALE:-vi}
+      
+      # Service configuration
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-300}
+      - PREFIX=${PREFIX:-summaries/}
+      - STATE_FILE=/app/data/.synced_files.json
+    volumes:
+      # Persist state file
+      - ./data:/app/data
+    # Uncomment and adjust if you want to override the default command
+    # command: python wiki_sync_service.py --interval 600
+
