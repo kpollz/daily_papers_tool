@@ -1,7 +1,8 @@
 import requests
 from datetime import datetime
 
-def fetch_daily_papers(date_str=None):
+
+def fetch_daily_papers(date_str=None, min_upvotes: int = 10):
     """
     Fetches the list of daily papers from Hugging Face API.
     If date_str is provided (format YYYY-MM-DD), it fetches papers for that date.
@@ -20,6 +21,12 @@ def fetch_daily_papers(date_str=None):
         extracted_papers = []
         for item in papers_data:
             paper = item.get('paper', {})
+
+            # Skip papers that don't meet the upvote threshold
+            upvotes = paper.get('upvotes')
+            if upvotes < min_upvotes:
+                continue
+
             paper_info = {
                 'id': paper.get('id'),
                 'title': paper.get('title'),
@@ -28,7 +35,8 @@ def fetch_daily_papers(date_str=None):
                 'hf_url': f"https://huggingface.co/papers/{paper.get('id')}",
                 'arxiv_url': f"https://arxiv.org/abs/{paper.get('id')}",
                 'pdf_url': f"https://arxiv.org/pdf/{paper.get('id')}.pdf",
-                'github_url': paper.get('githubRepo', "N/A")
+                'github_url': paper.get('githubRepo', "N/A"),
+                'upvotes': upvotes,
             }
             extracted_papers.append(paper_info)
         
@@ -39,7 +47,7 @@ def fetch_daily_papers(date_str=None):
 
 if __name__ == "__main__":
     # Test with a specific date
-    test_date = "2026-01-06"
+    test_date = "2026-01-13"
     print(f"Fetching papers for {test_date}...")
     papers = fetch_daily_papers(test_date)
     print(f"Found {len(papers)} papers.")
