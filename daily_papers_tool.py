@@ -29,7 +29,7 @@ def generate_markdown_report(summaries, date_str, model_name):
         summary = summary_data['summary']
         
         report += f"--- \n\n"
-        report += f"## {i}. {paper['title']}\n\n"
+        report += f"## {i}. {paper['title']} *({paper['upvotes']} votes)*\n\n"
         report += f"**Tác giả:** {', '.join(paper['authors'])}\n\n"
         report += f"**Xuất bản lúc:** {paper['published_at'][:10]}\n\n"
         
