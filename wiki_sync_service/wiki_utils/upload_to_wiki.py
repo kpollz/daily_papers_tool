@@ -102,7 +102,8 @@ def upload_to_wiki(content, title, path, wiki_url=None, api_token=None, locale="
         
         # Check if the mutation was successful
         response_result = result.get('data', {}).get('pages', {}).get('create', {}).get('responseResult', {})
-        if response_result.get('succeeded'):
+        response_slug = response_result.get('slug', 'Unknown error')
+        if response_result.get('succeeded') or response_slug == "PageDuplicateCreate":
             print(f"Successfully uploaded to Wiki.js: {title} at path {path}")
             return result
         else:
