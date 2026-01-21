@@ -20,14 +20,14 @@ def summarize_paper(paper_info, text, model="gpt-4.1-mini"):
     {text[:15000]}  # Limit text to avoid token limits
     
     Vui lòng cung cấp bản tóm tắt theo CHÍNH XÁC định dạng sau:
-    **Tag:** (Những từ khóa chính của bài báo là gì? VD: RAG, Diffusion, GAN, ...)
+    **Tag:** (Những từ khóa chính của bài báo là gì? VD: RAG, Diffusion, GAN, ... NOTE: chỉ dùng tiếng Anh cho các từ khóa này và là những từ khóa phổ biến trong lĩnh vực AI)
     ### I. Main Problem: (Vấn đề cốt lõi mà bài báo đề cập là gì?)
     ### II. Main Idea: (Giải pháp hoặc phương pháp đề xuất là gì?)
     ### III. Main Results: (Những phát hiện chính hoặc các chỉ số hiệu suất là gì?)
     ### IV. Conclusion & Future Works: (Thông điệp cuối cùng và hướng nghiên cứu tiếp theo là gì?)
     ### V. Brainstorming Space:
     #### 1. Publish Papers: (Những hướng nghiên cứu hay thử nghiệm nào có thể được tạo ra từ bài báo này? Note: 3 hướng, mỗi hướng chỉ cần biểu hiện bằng một câu văn ngắn gọn mô tả ý tưởng)
-    #### 2. Patent: (Từ công nghệ này, có thể hình thành bằng sáng chế nào? Note: ít nhất 3 ý tưởng, mỗi ý tưởng chỉ cần biểu hiện bằng một câu văn ngắn gọn mô tả ý tưởng và ý tưởng càng thiên về việc ứng dụng trong thực tế và trực tiếp liên quan tới điện thoại thì càng tốt.)
+    #### 2. Patent: (Từ công nghệ này, có thể hình thành bằng sáng chế nào? Note: ít nhất 3 ý tưởng, mỗi ý tưởng chỉ cần biểu hiện bằng một câu văn ngắn gọn mô tả ý tưởng và ý tưởng càng thiên về việc ứng dụng trong thực tế và trực tiếp liên quan tới điện thoại thì càng tốt. Đặc biệt là không dùng các từ viết tắt công nghệ mới trong bài báo của họ như kiểu "một phương pháp ứng dụng CSE.." mà phải diễn giải ngắn gọn ý tưởng của họ thay vì tên viết tắt)
 
     Lưu ý: 
     - Tất cả nội dung chỉ dựa trên văn bản được trích xuất.
