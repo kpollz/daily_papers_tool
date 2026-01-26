@@ -28,6 +28,7 @@ An automated tool that fetches, downloads, and summarizes daily trending papers 
 | `download_papers.py` | Downloads PDFs from ArXiv |
 | `summarize_papers.py` | Extracts text and generates summaries using LLM |
 | `daily_papers_tool.py` | Main orchestration script |
+| `api.py` | FastAPI REST API server |
 
 ## Installation
 
@@ -39,39 +40,163 @@ An automated tool that fetches, downloads, and summarizes daily trending papers 
 
 2. **Install dependencies**:
    ```bash
-   pip install requests pypdf openai
+   pip install -r requirements.txt
    ```
 
 3. **Set environment variables**:
+   
+   Tạo file `.env` trong thư mục gốc:
+   ```env
+   API_PASSWORD=your_secure_password_here
+   OPENAI_API_KEY=your-api-key-here
+   ```
+   
+   Hoặc export trực tiếp:
    ```bash
+   export API_PASSWORD="your_secure_password_here"
    export OPENAI_API_KEY="your-api-key-here"
    ```
 
 ## Usage
 
-### Basic Usage (Today's Date, OpenAI GPT-4 mini)
+### Command Line Interface
+
+#### Basic Usage (Today's Date, OpenAI GPT-4 mini)
 
 ```bash
 python daily_papers_tool.py
 ```
 
-### Specific Date with Default Model
+#### Specific Date with Default Model
 
 ```bash
 python daily_papers_tool.py --date 2026-01-02
 ```
 
-### Using Google Gemini
+#### Using Google Gemini
 
 ```bash
 python daily_papers_tool.py --model gemini-2.5-flash
 ```
 
-### Specific Date with Gemini
+#### Specific Date with Gemini
 
 ```bash
 python daily_papers_tool.py --date 2026-01-02 --model gemini-2.5-flash
 ```
+
+### REST API (FastAPI)
+
+Dự án đã được nâng cấp với FastAPI để cung cấp REST API endpoint dễ sử dụng.
+
+#### Khởi động API Server
+
+```bash
+# Cách 1: Sử dụng uvicorn trực tiếp
+uvicorn api:app --host 0.0.0.0 --port 8000
+
+# Cách 2: Chạy trực tiếp file api.py
+python api.py
+```
+
+Sau khi khởi động, API sẽ chạy tại: `http://localhost:8000`
+
+#### Cấu hình Authentication
+
+1. Tạo file `.env` trong thư mục gốc của dự án
+2. Thêm mật khẩu API:
+
+```env
+API_PASSWORD=your_secure_password_here
+```
+
+#### Sử dụng API
+
+##### POST Request (JSON Body)
+
+```bash
+curl -X POST "http://localhost:8000/generate-digest" \
+  -u "username:your_secure_password_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "day": 15,
+    "month": 1,
+    "year": 2026,
+    "model": "gpt-4.1-mini"
+  }'
+```
+
+##### GET Request (Query Parameters)
+
+```bash
+curl -X GET "http://localhost:8000/generate-digest?day=15&month=1&year=2026&model=gpt-4.1-mini" \
+  -u "username:your_secure_password_here"
+```
+
+##### Sử dụng Python requests
+
+```python
+import requests
+from requests.auth import HTTPBasicAuth
+
+url = "http://localhost:8000/generate-digest"
+auth = HTTPBasicAuth("username", "your_secure_password_here")
+
+# POST method
+response = requests.post(
+    url,
+    auth=auth,
+    json={
+        "day": 15,
+        "month": 1,
+        "year": 2026,
+        "model": "gpt-4.1-mini"
+    }
+)
+
+print(response.json())
+
+# GET method
+response = requests.get(
+    url,
+    auth=auth,
+    params={
+        "day": 15,
+        "month": 1,
+        "year": 2026,
+        "model": "gpt-4.1-mini"
+    }
+)
+
+print(response.json())
+```
+
+#### API Endpoints
+
+| Endpoint | Method | Mô tả |
+|----------|--------|-------|
+| `/` | GET | Kiểm tra trạng thái API |
+| `/generate-digest` | POST | Tạo tóm tắt với JSON body |
+| `/generate-digest` | GET | Tạo tóm tắt với query parameters |
+
+#### API Response
+
+```json
+{
+  "success": true,
+  "message": "Đã tạo tóm tắt thành công cho ngày 2026-01-15",
+  "date": "2026-01-15",
+  "model": "gpt-4.1-mini",
+  "output_file": "summaries/daily_digest_2026-01-15.md",
+  "username": "username"
+}
+```
+
+#### API Documentation
+
+Khi API server đang chạy, bạn có thể truy cập:
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
 
 ## Command-Line Arguments
 
@@ -206,7 +331,13 @@ For issues, questions, or suggestions, please open an issue on GitHub.
 
 ## Changelog
 
-### Version 2.0 (Latest)
+### Version 2.1 (Latest)
+- **Added FastAPI REST API**: API endpoint với Basic Authentication
+- **Flexible Input**: Nhận day, month, year riêng biệt thay vì date string
+- **API Documentation**: Swagger UI và ReDoc tự động
+- **Environment-based Security**: Mật khẩu API từ file .env
+
+### Version 2.0
 - Added date-based folder organization
 - Implemented automatic PDF cleanup
 - Added Google Gemini support

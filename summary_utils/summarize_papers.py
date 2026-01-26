@@ -40,7 +40,7 @@ def summarize_paper(paper_info, text, model="gpt-4.1-mini"):
             model=model,
             messages=[
                 {"role": "system", "content": "Bạn là một trợ lý đắc lực, tóm tắt các bài nghiên cứu một cách chính xác và ngắn gọn."},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt.replace('\ud835', '')}
             ]
         )
         return response.choices[0].message.content
