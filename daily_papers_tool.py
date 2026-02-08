@@ -92,8 +92,6 @@ def run_daily_digest(date_str, model="gpt-4.1-mini"):
         print("No papers found or error in fetching. Exiting.")
         return
     print(f"Found {len(papers)} papers.")
-    
-    papers = papers[:2]  # Limit to top 10 papers for processing
 
     # 2. Download all the papers into a date-specific folder
     print(f"Phase 2: Downloading PDFs into papers/{date_str}...")
@@ -164,7 +162,7 @@ def run_daily_digest(date_str, model="gpt-4.1-mini"):
         #     print(f"Deleted temporary file: {paper['local_path']}")
         # except Exception as e:
         #     print(f"Error deleting file {paper['local_path']}: {e}")
-        
+
         # Be polite to ArXiv
         time.sleep(5)
         
@@ -172,17 +170,27 @@ def run_daily_digest(date_str, model="gpt-4.1-mini"):
     print("Phase 5: Generating Markdown Report...")
     markdown_report = generate_markdown_report(summaries, date_str, model)
     
-    if not os.path.exists("summaries"):
-        os.makedirs("summaries", exist_ok=True)
-    report_filename = f"summaries/daily_digest_{date_str}.md"
+    # Parse date to get year and month for organized storage
+    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+    year = date_obj.strftime('%Y')
+    month = date_obj.strftime('%m')
+    organized_dir = os.path.join("summaries", year, month)
+    
+    # Create directory structure if it doesn't exist
+    if not os.path.exists(organized_dir):
+        os.makedirs(organized_dir, exist_ok=True)
+    
+    report_filename = os.path.join(organized_dir, f"daily_digest_{date_str}.md")
+
+    
     with open(report_filename, 'w', encoding='utf-8') as f:
         f.write(markdown_report)
         
     print(f"--- Digest Complete. Report saved to {report_filename} ---")
     
-    # 6. Upload to MinIO
+    # 6. Upload to MinIO with organized structure
     print("Phase 6: Uploading to MinIO...")
-    minio_object_name = f"summaries/daily_digest_{date_str}.md"
+    minio_object_name = f"summaries/{year}/{month}/daily_digest_{date_str}.md"
     upload_to_minio(report_filename, minio_object_name)
         
     return report_filename
