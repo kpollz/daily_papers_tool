@@ -65,7 +65,7 @@ def summarize_paper(paper_info, text, model="gpt-4.1-mini"):
     - Patent ideas should focus on practical applications, especially for mobile phones
     - Patent ideas should explain concepts clearly without using technical abbreviations from the paper
     - Provide exactly 3 research directions and 3 patent ideas
-    - The value of each field should be in Markdown format for better readability 
+    - The value of each field should be in Markdown format that is used to fill into my template as below (my template is available, your job is only generates the content inside and not to recreate the headings like ### I. Main Problem, ### II. Main Idea,...)
     """
     
     try:

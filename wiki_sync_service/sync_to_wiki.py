@@ -84,7 +84,7 @@ def sync_file_to_wiki(object_name, wiki_title=None, wiki_path=None, bucket_name=
                 wiki_title = format_date_for_title(date_str)
             if wiki_path is None:
                 # Path format: daily-papers/daily_digest_YYYY-MM-DD (e.g., daily-papers/daily_digest_2026-01-07)
-                wiki_path = f"daily-papers/daily_digest_{date_str}"
+                wiki_path = f"daily-papers/{date_str.replace("-","/")[:-3]}/daily_digest_{date_str}"
         else:
             # Fallback: use object name
             base_name = os.path.basename(object_name).replace('.md', '')
@@ -128,7 +128,7 @@ def sync_by_date(date_str, bucket_name=None, locale="vi"):
     # Title format: DD-MM-YYYY (e.g., 07-01-2026)
     wiki_title = format_date_for_title(date_str)
     # Path format: daily-papers/daily_digest_YYYY-MM-DD (e.g., daily-papers/daily_digest_2026-01-07)
-    wiki_path = f"daily-papers/daily_digest_{date_str}"
+    wiki_path = f"daily-papers/{date_str.replace("-","/")[:-3]}/daily_digest_{date_str}"
     
     return sync_file_to_wiki(
         object_name=object_name,
