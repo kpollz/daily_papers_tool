@@ -132,7 +132,8 @@ def sync_object_to_wiki(object_name, synced_files, state_file):
         # Title format: DD-MM-YYYY (e.g., 07-01-2026)
         wiki_title = format_date_for_title(date_str)
         # Path format: daily-papers/daily_digest_YYYY-MM-DD (e.g., daily-papers/daily_digest_2026-01-07)
-        wiki_path = f"daily-papers/daily_digest_{date_str}"
+        sub_path = date_str.replace("-","/")[:-3]
+        wiki_path = f"daily-papers/{sub_path}/daily_digest_{date_str}"
     else:
         # Fallback: use object name
         base_name = os.path.basename(object_name).replace('.md', '')
