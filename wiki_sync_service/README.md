@@ -10,6 +10,7 @@ This service periodically checks MinIO for new summary files and automatically u
 
 - 🔄 Automatic periodic checking of MinIO for new files
 - 📝 Syncs markdown files to Wiki.js via GraphQL API
+- 📅 Automatically updates monthly index pages with new digest links
 - ✅ Tracks synced files to avoid duplicates
 - 🐳 Docker support with docker-compose
 - 🔧 Configurable check intervals and prefixes
@@ -129,6 +130,26 @@ python sync_to_wiki.py --date 2026-01-07
 python sync_to_wiki.py --object summaries/daily_digest_2026-01-07.md
 ```
 
+## Wiki Structure
+
+The service is designed to work with the following Wiki.js structure:
+
+```
+Level 1: daily-papers/2026
+  └── Contains links to 12 monthly pages
+
+Level 2: daily-papers/2026/{month}
+  └── Contains links to daily digests, e.g.:
+      - [[30-01-2026*Tóm tắt các bài báo thuộc top ngày 30-01-2026*]](/daily-paper/01/daily_digest_2026-01-30)
+      - [[29-01-2026*Tóm tắt các bài báo thuộc top ngày 29-01-2026*]](/daily-paper/01/daily_digest_2026-01-29)
+      - ...
+
+Level 3: /daily-paper/{month}/daily_digest_YYYY-MM-DD
+  └── Individual daily digest pages
+```
+
+**Note**: Monthly index pages (Level 2) must be created manually in Wiki.js before the service can update them.
+
 ## How It Works
 
 1. **Periodic Checking**: The service checks MinIO at regular intervals (default: 5 minutes)
@@ -139,7 +160,21 @@ python sync_to_wiki.py --object summaries/daily_digest_2026-01-07.md
    - Downloads content from MinIO
    - Generates appropriate title and path for Wiki.js
    - Uploads to Wiki.js via GraphQL API
+   - Updates the corresponding monthly index page with a new link (if the page exists)
    - Marks as synced in state file
+
+### Monthly Index Page Update
+
+When a new digest is synced (e.g., `2026-02-12`), the service will:
+1. Locate the monthly index page at `daily-papers/2026/02`
+2. Fetch the current page content
+3. Prepend a new link at the top in the format:
+   ```markdown
+   - [[12-02-2026*Tóm tắt các bài báo thuộc top ngày 12-02-2026*]](/daily-paper/02/daily_digest_2026-02-12)
+   ```
+4. Save the updated page content
+
+**Important**: If the monthly index page doesn't exist, the service will skip the index update but still sync the digest page successfully.
 
 ## State File
 
@@ -177,6 +212,13 @@ To reset and re-sync all files, simply delete this file.
 - Check that files end with `.md` extension
 - Verify state file isn't corrupted (delete it to reset)
 
+### Monthly index page not updating
+
+- Ensure the monthly index page exists in Wiki.js (e.g., `daily-papers/2026/02`)
+- Check that the page path format is correct: `daily-papers/YYYY/MM`
+- Verify the API token has write permissions for the wiki pages
+- Review service logs for specific error messages about page updates
+
 ## Development
 
 ### Project Structure
@@ -186,7 +228,8 @@ wiki_sync_service/
 ├── wiki_utils/              # Utility modules
 │   ├── __init__.py
 │   ├── download_from_minio.py
-│   └── upload_to_wiki.py
+│   ├── upload_to_wiki.py
+│   └── wiki_page_operations.py  # Wiki page read/update functions
 ├── wiki_sync_service.py     # Main service daemon
 ├── sync_to_wiki.py          # Manual sync script
 ├── requirements.txt         # Python dependencies
@@ -194,6 +237,16 @@ wiki_sync_service/
 ├── docker-compose.yml       # Docker Compose configuration
 └── README.md               # This file
 ```
+
+### New Wiki Page Operations Module
+
+The `wiki_page_operations.py` module provides additional functions for managing wiki pages:
+
+- `get_page_content(path)` - Retrieve content of an existing wiki page
+- `update_page_content(page_id, content)` - Update an existing wiki page
+- `create_monthly_index_link(date_str, digest_path)` - Generate markdown link for monthly index
+- `get_monthly_index_path(date_str)` - Get path for monthly index page
+- `get_digest_path(date_str)` - Get path for digest page
 
 ## License
 

@@ -19,6 +19,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from wiki_utils import list_objects_in_minio, read_content_from_minio, upload_to_wiki
+from wiki_utils import (
+    get_page_content,
+    update_page_content,
+    create_monthly_index_link,
+    get_monthly_index_path,
+    get_digest_path
+)
 
 # Global flag for graceful shutdown
 running = True
@@ -102,6 +109,69 @@ def format_date_for_title(date_str):
         return date_str
 
 
+def update_monthly_index(date_str, digest_path):
+    """Update the monthly index page with a link to the new digest.
+    
+    Args:
+        date_str (str): Date in YYYY-MM-DD format (e.g., "2026-02-12")
+        digest_path (str): Path to the digest page
+    
+    Returns:
+        bool: True if update was successful, False otherwise
+    """
+    try:
+        # Get the monthly index page path
+        monthly_index_path = get_monthly_index_path(date_str)
+        if not monthly_index_path:
+            print(f"Invalid date format: {date_str}")
+            return False
+        
+        print(f"\nUpdating monthly index page: {monthly_index_path}")
+        
+        # Get the current content of the monthly index page
+        locale = os.getenv('WIKI_LOCALE', 'vi')
+        page_data = get_page_content(monthly_index_path, locale=locale)
+        
+        if page_data is None:
+            print(f"Monthly index page not found: {monthly_index_path}")
+            print("Skipping index page update. Please create the page manually.")
+            return False
+        
+        # Create the new link
+        new_link = create_monthly_index_link(date_str, digest_path)
+        
+        # Prepare updated content
+        current_content = page_data.get('content', '')
+        
+        # Add the new link at the beginning of the content
+        if current_content.strip():
+            updated_content = new_link + "\n" + current_content
+        else:
+            # If content is empty, just add the link
+            updated_content = new_link
+        
+        # Update the page
+        page_id = page_data.get('id')
+        result = update_page_content(
+            page_id=page_id,
+            content=updated_content,
+            locale=locale
+        )
+        
+        if result:
+            print(f"✓ Successfully updated monthly index: {monthly_index_path}")
+            return True
+        else:
+            print(f"✗ Failed to update monthly index: {monthly_index_path}")
+            return False
+            
+    except Exception as e:
+        print(f"Error updating monthly index: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def sync_object_to_wiki(object_name, synced_files, state_file):
     """Sync a single object from MinIO to Wiki.js.
     
@@ -128,12 +198,17 @@ def sync_object_to_wiki(object_name, synced_files, state_file):
     
     # Generate wiki title and path
     date_str = extract_date_from_filename(object_name)
+    digest_path = None
+    
     if date_str:
         # Title format: DD-MM-YYYY (e.g., 07-01-2026)
         wiki_title = format_date_for_title(date_str)
         # Path format: daily-papers/daily_digest_YYYY-MM-DD (e.g., daily-papers/daily_digest_2026-01-07)
         sub_path = date_str.replace("-","/")[:-3]
         wiki_path = f"daily-papers/{sub_path}/daily_digest_{date_str}"
+        
+        # Get digest path for monthly index
+        digest_path = get_digest_path(date_str)
     else:
         # Fallback: use object name
         base_name = os.path.basename(object_name).replace('.md', '')
@@ -154,6 +229,11 @@ def sync_object_to_wiki(object_name, synced_files, state_file):
         synced_files.add(object_name)
         save_synced_files(synced_files, state_file)
         print(f"✓ Successfully synced: {object_name}")
+        
+        # Update monthly index page if date is available
+        if date_str and digest_path:
+            update_monthly_index(date_str, digest_path)
+        
         return True
     else:
         print(f"✗ Failed to sync: {object_name}")
