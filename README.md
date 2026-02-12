@@ -1,67 +1,141 @@
-# Hugging Face Daily Paper Digest Tool
+# Daily Papers Tool
 
-An automated tool that fetches, downloads, and summarizes daily trending papers from Hugging Face using AI-powered analysis.
+An automated tool that fetches, downloads, summarizes, and manages daily trending papers from Hugging Face with database persistence and MinIO object storage integration.
 
-## Features
+## 🌟 Features
 
-- **Automated Paper Fetching**: Retrieves the daily paper list directly from the Hugging Face API
-- **Smart PDF Management**: Downloads papers from ArXiv and organizes them by date
-- **Automatic Cleanup**: Deletes PDFs after processing to save disk space
-- **AI Summarization**: Uses LLM to read and summarize papers into structured formats
-- **Flexible LLM Support**: Choose between OpenAI GPT-4 mini or Google Gemini
-- **Markdown Reporting**: Generates comprehensive reports with summaries and links
+- **Automated Paper Fetching**: Retrieves daily trending papers from Hugging Face API with configurable upvote thresholds
+- **Intelligent Database Storage**: PostgreSQL database for persistent storage of papers, summaries, and digest reports
+- **PDF Processing**: Downloads and extracts text from ArXiv papers
+- **AI-Powered Summarization**: Uses LLMs (OpenAI GPT-4 or Google Gemini) to generate structured summaries
+- **MinIO Integration**: Uploads generated markdown reports to MinIO object storage
+- **Duplicate Prevention**: Skips papers that have already been summarized
+- **Organized Storage**: Reports organized by year/month structure
 
-## What's New
+## 📋 Table of Contents
 
-### Recent Updates
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Database Schema](#database-schema)
+- [Project Structure](#project-structure)
+- [Environment Variables](#environment-variables)
+- [Wiki Sync Service (Optional Add-on)](#wiki-sync-service-optional-add-on)
+- [Troubleshooting](#troubleshooting)
 
-- **Date-based Organization**: PDFs are now organized into `papers/YYYY-MM-DD/` folders
-- **Automatic Cleanup**: PDF files are automatically deleted after processing
-- **Gemini Support**: Added Google Gemini as an alternative LLM provider
-- **CLI Arguments**: New command-line options for date and model selection
+## 🏗️ Architecture
 
-## Components
+```mermaid
+ graph TD
+    
+    subgraph "External Services/Tools"
+        A[Hugging Face API]
+        B[PyMuPDF Python SDK]
+        C[PostgreSQL Database]
+        D[MinIO Object Storage]
+        E[LLM API<br/>OpenAI/Gemini]
+    end
 
-| File | Purpose |
-|------|---------|
-| `fetch_papers.py` | Fetches the paper list from Hugging Face API |
-| `download_papers.py` | Downloads PDFs from ArXiv |
-| `summarize_papers.py` | Extracts text and generates summaries using LLM |
-| `daily_papers_tool.py` | Main orchestration script |
-| `api.py` | FastAPI REST API server |
+    subgraph "Daily Papers Digest Tool"
+        B1[Fetch Papers] --> B2[Download PDFs]
+        B2 --> B3[Extract Text]
+        B3 --> B4[LLM Summarization]
+        B4 --> B5[Generate Markdown Report]
+        B5 --> B6[Upload to MinIO]
+        B6 --> B7[Save to PostgreSQL]
+    end
 
-## Installation
+    
+    A --> B1
+    A --> B2
+    B --> B3
+    E --> B4
+    D --> B6
+    C --> B7
+```
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/kpollz/daily_papers_tool.git
-   cd daily_papers_tool
-   ```
+**Note**: The `wiki_sync_service` is a separate, optional add-on project that can be used to automatically sync content from MinIO to Wiki.js. It operates independently from the main application as shown below:
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```mermaid
+graph LR
+    A[MinIO Storage] -->|Pull Summaries| B[Wiki Sync Service]
+    B -->|Push Content| C[Wiki.js]
+```
 
-3. **Set environment variables**:
-   
-   Tạo file `.env` trong thư mục gốc:
-   ```env
-   API_PASSWORD=your_secure_password_here
-   OPENAI_API_KEY=your-api-key-here
-   ```
-   
-   Hoặc export trực tiếp:
-   ```bash
-   export API_PASSWORD="your_secure_password_here"
-   export OPENAI_API_KEY="your-api-key-here"
-   ```
+## 📦 Prerequisites
 
-## Usage
+- Python 3.8 or higher
+- PostgreSQL 12 or higher
+- MinIO server (for object storage)
+- OpenAI API key or Google Gemini API key
 
-### Command Line Interface
+**Optional (for Wiki Sync Service)**:
+- Wiki.js instance
+- Additional Python dependencies (see wiki_sync_service/requirements.txt)
 
-#### Basic Usage (Today's Date, OpenAI GPT-4 mini)
+## 🔧 Installation
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/kpollz/daily_papers_tool.git
+cd daily_papers_tool
+```
+
+### 2. Set Up Python Virtual Environment
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Set Up PostgreSQL Database
+
+```bash
+# Create database
+createdb daily_papers_db
+
+# Or use psql
+psql -U postgres
+CREATE DATABASE daily_papers_db;
+\q
+```
+
+### 5. Configure Environment Variables
+
+Copy the example environment file and fill in your credentials:
+
+```bash
+cp .env.copy .env
+```
+
+Edit `.env` with your actual values (see [Configuration](#configuration) section).
+
+## ⚙️ Configuration
+
+Create a `.env` file in the project root with the following variables:
+
+```env
+OPENAI_API_KEY=""
+MINIO_ACCESS_KEY=""
+MINIO_SECRET_KEY=""
+API_PASSWORD=""
+DATABASE_URL=""
+```
+
+## 🚀 Usage
+
+### Main Application
+
+#### Basic Usage (Today's Date, Default Model)
 
 ```bash
 python daily_papers_tool.py
@@ -73,276 +147,322 @@ python daily_papers_tool.py
 python daily_papers_tool.py --date 2026-01-02
 ```
 
-#### Using Google Gemini
+#### Using Google Gemini Model
 
 ```bash
 python daily_papers_tool.py --model gemini-2.5-flash
 ```
 
-#### Specific Date with Gemini
+#### Complete Example
 
 ```bash
 python daily_papers_tool.py --date 2026-01-02 --model gemini-2.5-flash
 ```
 
-### REST API (FastAPI)
-
-Dự án đã được nâng cấp với FastAPI để cung cấp REST API endpoint dễ sử dụng.
-
-#### Khởi động API Server
-
-```bash
-# Cách 1: Sử dụng uvicorn trực tiếp
-uvicorn api:app --host 0.0.0.0 --port 8000
-
-# Cách 2: Chạy trực tiếp file api.py
-python api.py
-```
-
-Sau khi khởi động, API sẽ chạy tại: `http://localhost:8000`
-
-#### Cấu hình Authentication
-
-1. Tạo file `.env` trong thư mục gốc của dự án
-2. Thêm mật khẩu API:
-
-```env
-API_PASSWORD=your_secure_password_here
-```
-
-#### Sử dụng API
-
-##### POST Request (JSON Body)
-
-```bash
-curl -X POST "http://localhost:8000/generate-digest" \
-  -u "username:your_secure_password_here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "day": 15,
-    "month": 1,
-    "year": 2026,
-    "model": "gpt-4.1-mini"
-  }'
-```
-
-##### GET Request (Query Parameters)
-
-```bash
-curl -X GET "http://localhost:8000/generate-digest?day=15&month=1&year=2026&model=gpt-4.1-mini" \
-  -u "username:your_secure_password_here"
-```
-
-##### Sử dụng Python requests
-
-```python
-import requests
-from requests.auth import HTTPBasicAuth
-
-url = "http://localhost:8000/generate-digest"
-auth = HTTPBasicAuth("username", "your_secure_password_here")
-
-# POST method
-response = requests.post(
-    url,
-    auth=auth,
-    json={
-        "day": 15,
-        "month": 1,
-        "year": 2026,
-        "model": "gpt-4.1-mini"
-    }
-)
-
-print(response.json())
-
-# GET method
-response = requests.get(
-    url,
-    auth=auth,
-    params={
-        "day": 15,
-        "month": 1,
-        "year": 2026,
-        "model": "gpt-4.1-mini"
-    }
-)
-
-print(response.json())
-```
-
-#### API Endpoints
-
-| Endpoint | Method | Mô tả |
-|----------|--------|-------|
-| `/` | GET | Kiểm tra trạng thái API |
-| `/generate-digest` | POST | Tạo tóm tắt với JSON body |
-| `/generate-digest` | GET | Tạo tóm tắt với query parameters |
-
-#### API Response
-
-```json
-{
-  "success": true,
-  "message": "Đã tạo tóm tắt thành công cho ngày 2026-01-15",
-  "date": "2026-01-15",
-  "model": "gpt-4.1-mini",
-  "output_file": "summaries/daily_digest_2026-01-15.md",
-  "username": "username"
-}
-```
-
-#### API Documentation
-
-Khi API server đang chạy, bạn có thể truy cập:
-- **Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
-
-## Command-Line Arguments
+#### Command-Line Arguments
 
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
 | `--date` | string | Today's date | Date in YYYY-MM-DD format |
 | `--model` | string | gpt-4.1-mini | LLM model to use (gpt-4.1-mini or gemini-2.5-flash) |
 
-## Output
+## 🗄️ Database Schema
+
+### Papers Table
+
+Stores basic information about papers from Hugging Face.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | String (PK) | ArXiv ID |
+| `title` | String | Paper title |
+| `authors` | JSON | List of authors |
+| `published_at` | DateTime | Publication date |
+| `hf_url` | String | Hugging Face URL |
+| `arxiv_url` | String | ArXiv URL |
+| `pdf_url` | String | PDF download URL |
+| `github_url` | String | GitHub repository URL |
+| `upvotes` | Integer | Number of upvotes |
+| `created_at` | DateTime | Record creation time |
+
+### PaperSummaries Table
+
+Stores LLM-generated summaries in structured format.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | Integer (PK) | Auto-increment ID |
+| `paper_id` | String (FK) | Reference to papers.id |
+| `tags` | JSON | List of tags/keywords |
+| `main_problem` | Text | Core problem addressed |
+| `main_idea` | Text | Proposed solution |
+| `main_results` | Text | Key findings |
+| `conclusion_future_works` | Text | Conclusion and future work |
+| `publish_papers` | JSON | List of research directions |
+| `patent_ideas` | JSON | List of patent ideas |
+| `model_used` | String | LLM model used |
+| `processed_at` | DateTime | Processing timestamp |
+| `extracted_text_length` | Integer | Text length processed |
+
+### DigestReports Table
+
+Stores metadata about generated digest reports.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | Integer (PK) | Auto-increment ID |
+| `date_str` | String | Date in YYYY-MM-DD format |
+| `report_path` | String | Local file path |
+| `minio_object_name` | String | MinIO object name |
+| `paper_count` | Integer | Number of papers |
+| `model_used` | String | LLM model used |
+| `created_at` | DateTime | Creation timestamp |
+
+## 📊 Output Format
 
 The tool generates a Markdown file named `daily_digest_YYYY-MM-DD.md` containing:
 
-- Paper title and authors
-- Publication date
-- **Main Problem**: Core issue addressed
-- **Main Idea**: Proposed solution or approach
-- **Main Results**: Key findings and metrics
-- **Conclusion & Future Works**: Final takeaway and next steps
-- **Related Links**: Hugging Face, ArXiv, GitHub, and PDF links
-
-### Example Output Structure
-
 ```markdown
-# Daily Hugging Face Paper Digest - 2026-01-02
+# 🤗 Daily Hugging Face Paper Digest - 2026-01-02
 
-## 1. Paper Title Here
+Báo cáo được tạo tự động vào lúc 2026-01-02 10:30:00 bằng mô hình `gpt-4.1-mini`.
 
-**Authors:** Author One, Author Two, Author Three
+## 📰 Summary of Papers
 
-**Published:** 2025-12-30
+---
 
-- Main Problem: ...
-- Main Idea: ...
-- Main Results: ...
-- Conclusion & Future Works: ...
+## 1. Paper Title Here *(15 votes)*
 
-### Related Links
+**Tác giả:** Author One, Author Two, Author Three
 
-| Platform | Link |
+**Xuất bản lúc:** 2025-12-30
+
+**Tags:** tag1, tag2, tag3
+
+### Main Problem
+Core problem description...
+
+### Main Idea
+Proposed solution...
+
+### Main Results
+Key findings and metrics...
+
+### Conclusion & Future Works
+Final takeaway and next steps...
+
+### Publish Papers (Research Directions)
+1. Research direction 1
+2. Research direction 2
+3. Research direction 3
+
+### Patent Ideas
+1. Patent idea 1
+2. Patent idea 2
+3. Patent idea 3
+
+### Các đường dẫn liên quan
+
+| Nền tảng | Đường dẫn |
 | :--- | :--- |
-| Hugging Face | [link] |
-| ArXiv Abstract | [link] |
-| PDF Download | [link] |
-| GitHub | [link] |
+| Hugging Face | [link](url) |
+| ArXiv Abstract | [link](url) |
+| PDF Download | [link](url) |
+| Github Repository | [link](url) |
 ```
 
-## How It Works
-
-1. **Fetch**: Retrieves the list of trending papers from Hugging Face API
-2. **Download**: Downloads PDF files from ArXiv into date-specific folders
-3. **Extract**: Extracts text from the first 10 pages of each PDF
-4. **Summarize**: Uses LLM (OpenAI or Gemini) to generate structured summaries
-5. **Cleanup**: Automatically deletes PDF files and empty folders
-6. **Report**: Generates a comprehensive Markdown report with all summaries
-
-## Supported Models
-
-### OpenAI
-- `gpt-4.1-mini` (default) - Fast and efficient model
-
-### Google Gemini
-- `gemini-2.5-flash` - Latest Gemini model with strong performance
-
-## Environment Setup
-
-### For OpenAI Models
-
-```bash
-export OPENAI_API_KEY="sk-..."
-```
-
-### For Google Gemini
-
-```bash
-export OPENAI_API_KEY="your-gemini-api-key"
-```
-
-Note: Both models use the same environment variable in this setup due to the OpenAI-compatible API configuration.
-
-## File Organization
+## 📁 Project Structure
 
 ```
 daily_papers_tool/
-├── daily_papers_tool.py          # Main script
-├── fetch_papers.py               # API fetching
-├── download_papers.py            # PDF downloading
-├── summarize_papers.py           # LLM summarization
-├── README.md                      # Documentation
-└── papers/                        # Temporary storage (auto-cleaned)
-    └── 2026-01-02/               # Date-specific folder
-        └── (PDFs stored here, then deleted)
+├── daily_papers_tool.py          # Main orchestration script
+├── requirements.txt              # Python dependencies
+├── .env                          # Environment variables (create this)
+├── .env.copy                     # Environment variables template
+├── .gitignore                    # Git ignore rules
+├── README.md                     # This file
+│
+├── database/                     # Database layer
+│   ├── __init__.py
+│   ├── models.py                 # SQLAlchemy models
+│   └── db_utils.py               # Database utility functions
+│
+├── summary_utils/                # Paper processing utilities
+│   ├── __init__.py
+│   ├── fetch_papers.py           # Fetch from Hugging Face API
+│   ├── download_papers.py        # Download PDFs from ArXiv
+│   ├── extract_figure.py         # Extract figures (experimental)
+│   ├── summarize_papers.py       # LLM summarization
+│   └── upload_minio.py           # Upload to MinIO storage
+│
+├── papers/                       # Temporary PDF storage
+│   └── YYYY-MM-DD/              # Date-specific folders
+│
+├── summaries/                   # Generated markdown reports
+│   └── YYYY/                    # Year
+│       └── MM/                  # Month
+│           └── daily_digest_YYYY-MM-DD.md
+│
+└── wiki_sync_service/           # Optional: Wiki.js sync service (separate project)
+    ├── sync_to_wiki.py          # Main sync script
+    ├── wiki_sync_service.py     # Alternative implementation
+    ├── requirements.txt         # Wiki sync dependencies
+    ├── .env.copy                # Wiki sync env template
+    ├── docker-compose.yml       # Docker configuration
+    ├── Dockerfile               # Docker image
+    ├── .dockerignore           # Docker ignore rules
+    ├── .gitignore              # Git ignore rules
+    ├── README.md               # Wiki sync documentation
+    └── wiki_utils/             # Wiki utility functions
+        ├── __init__.py
+        ├── download_from_minio.py
+        └── upload_to_wiki.py
 ```
 
-## Performance Considerations
+## 🔌 Supported Models
 
-- **Download Time**: ~1-2 seconds per paper (respects ArXiv rate limits)
-- **Summarization Time**: ~10-30 seconds per paper (depends on model and paper length)
-- **Total Time**: ~2-5 minutes for 7 papers (typical daily digest)
+### OpenAI
+- **gpt-4.1-mini** (default) - Fast and efficient model
 
-## Troubleshooting
+### Google Gemini
+- **gemini-2.5-flash** - Latest Gemini model with strong performance
+
+Both models use the `OPENAI_API_KEY` environment variable due to OpenAI-compatible API configuration.
+
+## 🔄 Workflow
+
+1. **Fetch Papers**: Retrieves daily trending papers from Hugging Face API (filtered by upvotes ≥ 10)
+2. **Download PDFs**: Downloads PDF files from ArXiv into date-specific folders
+3. **Initialize Database**: Connects to PostgreSQL and creates tables if needed
+4. **Check Duplicates**: Skips papers that already have summaries in the database
+5. **Extract Text**: Extracts text content from PDF files
+6. **Generate Summary**: Uses LLM to create structured JSON summaries
+7. **Save to Database**: Persists paper info and summary to PostgreSQL
+8. **Generate Report**: Creates comprehensive Markdown report
+9. **Upload to MinIO**: Stores the report in MinIO with organized structure (summaries/YYYY/MM/)
+10. **Clean Up**: Respects rate limits between paper processing (5 second delay)
+
+## 📝 Environment Variables Reference
+
+### Main Application (.env)
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `OPENAI_API_KEY` | Yes | OpenAI or Gemini API key | `sk-...` |
+| `MINIO_ACCESS_KEY` | Yes | MinIO access key | `minioadmin` |
+| `MINIO_SECRET_KEY` | Yes | MinIO secret key | `minioadmin` |
+| `MINIO_ENDPOINT` | No | MinIO server endpoint (default: localhost:9000) | `localhost:9000` |
+| `MINIO_BUCKET` | No | MinIO bucket name (default: daily-papers) | `daily-papers` |
+| `MINIO_SECURE` | No | Use HTTPS (default: false) | `false` |
+| `DATABASE_URL` | Yes | PostgreSQL connection string | `postgresql://user:pass@localhost:5432/db` |
+| `API_PASSWORD` | No | API password for future endpoints | `secure_password` |
+
+## 📚 Wiki Sync Service (Optional Add-on)
+
+The `wiki_sync_service` is a **separate, independent project** that can be used to automatically pull new summaries from MinIO and push them to Wiki.js. It is not part of the main daily_papers_tool application and operates independently.
+
+**Use Case**: If you want to automatically sync your generated paper summaries from MinIO to a Wiki.js instance, you can use this optional add-on service.
+
+### Setting Up Wiki Sync Service
+
+1. Navigate to the wiki_sync_service directory:
+```bash
+cd wiki_sync_service
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Configure environment variables:
+```bash
+cp .env.copy .env
+```
+
+Edit `wiki_sync_service/.env` with your credentials
+
+
+4. Run the sync service:
+```bash
+# Sync a specific date
+python sync_to_wiki.py --date 2026-01-07
+
+# Sync today's digest
+python sync_to_wiki.py --date today
+
+# Sync by MinIO object name
+python sync_to_wiki.py --object summaries/daily_digest_2026-01-07.md
+```
+
+5. Optional: Run with Docker:
+```bash
+docker-compose up -d
+```
+
+For detailed documentation, see [wiki_sync_service/README.md](wiki_sync_service/README.md).
+
+## ⚠️ Troubleshooting
+
+### Issue: "DATABASE_URL not found in environment variables"
+- Ensure `.env` file exists in the project root
+- Verify `DATABASE_URL` is set correctly
+- Check that the file is named `.env` (not `.env.copy`)
 
 ### Issue: "No papers found"
-- Check your internet connection
+- Check internet connection
 - Verify the date format is correct (YYYY-MM-DD)
 - Try a different date to confirm API is working
+- Ensure Hugging Face API is accessible
 
 ### Issue: "Permission denied" or "403 error"
-- Verify your API key is correct
-- Check that the API key has the necessary permissions
-- Ensure environment variable is properly set
+- Verify API keys are correct
+- Check that the API key has necessary permissions
+- Ensure environment variables are properly set and loaded
 
 ### Issue: "PDF extraction failed"
 - Some PDFs may have text extraction issues
 - The tool will skip those papers and continue
-- Check the console output for specific errors
+- Check console output for specific errors
 
-### Issue: Model not found
-- Update the openai package: `pip install --upgrade openai`
-- Verify the model name is correct (gpt-4.1-mini or gemini-2.5-flash)
+### Issue: "MinIO connection failed"
+- Verify MinIO server is running
+- Check `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, and `MINIO_SECRET_KEY`
+- Ensure firewall allows connection to MinIO port (default: 9000)
 
-## Contributing
+### Issue: "PostgreSQL connection failed"
+- Verify PostgreSQL server is running
+- Check database connection string in `DATABASE_URL`
+- Ensure the database exists (`createdb daily_papers_db`)
+- Verify user has necessary permissions
+
+## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a pull request with improvements.
 
-## License
+## 📄 License
 
 This project is open source and available under the MIT License.
 
-## Support
+## 🆘 Support
 
 For issues, questions, or suggestions, please open an issue on GitHub.
 
-## Changelog
+## 📚 Changelog
 
-### Version 2.1 (Latest)
-- **Added FastAPI REST API**: API endpoint với Basic Authentication
-- **Flexible Input**: Nhận day, month, year riêng biệt thay vì date string
-- **API Documentation**: Swagger UI và ReDoc tự động
-- **Environment-based Security**: Mật khẩu API từ file .env
+### Version 3.0 (Current)
+- **Added PostgreSQL Database**: Persistent storage for papers, summaries, and reports
+- **Added MinIO Integration**: Object storage for markdown reports with organized structure
+- **Added Duplicate Prevention**: Skips already-summarized papers to save time and costs
+- **Improved Organization**: Year/month structure for summaries in both local storage and MinIO
+- **Database Models**: Structured data storage with SQLAlchemy ORM
+- **Wiki Sync Service**: Added as optional separate project for Wiki.js integration
 
 ### Version 2.0
 - Added date-based folder organization
-- Implemented automatic PDF cleanup
 - Added Google Gemini support
 - Added CLI arguments for date and model selection
-- Improved report generation with model information
+- Improved report generation
 
 ### Version 1.0
 - Initial release with basic functionality
