@@ -264,7 +264,7 @@ def create_monthly_index_link(date_str, digest_path):
     
     Args:
         date_str (str): Date in YYYY-MM-DD format (e.g., "2026-02-12")
-        digest_path (str): Path to the digest page (e.g., "/daily-paper/02/daily_digest_2026-02-12")
+        digest_path (str): Path to the digest page (e.g., "/daily-paper/2026/02/daily_digest_2026-02-12")
     
     Returns:
         str: Markdown formatted link
@@ -278,7 +278,7 @@ def create_monthly_index_link(date_str, digest_path):
         formatted_date = date_str
     
     # Create the link in Vietnamese format
-    link = f"- [[{formatted_date}*Tóm tắt các bài báo thuộc top ngày {formatted_date}*]]({digest_path})"
+    link = f"- [[{formatted_date}]*Tóm tắt các bài báo thuộc top ngày {formatted_date}*](/{digest_path})"
     return link
 
 
@@ -296,22 +296,4 @@ def get_monthly_index_path(date_str):
         year = parts[0]
         month = parts[1]
         return f"daily-papers/{year}/{month}"
-    return None
-
-
-def get_digest_path(date_str):
-    """Get the path for the digest page based on date.
-    
-    Args:
-        date_str (str): Date in YYYY-MM-DD format (e.g., "2026-02-12")
-    
-    Returns:
-        str: Path to digest page (e.g., "/daily-paper/02/daily_digest_2026-02-12")
-    """
-    parts = date_str.split("-")
-    if len(parts) == 3:
-        year = parts[0]
-        month = parts[1]
-        day = parts[2]
-        return f"/daily-paper/{month}/daily_digest_{date_str}"
     return None

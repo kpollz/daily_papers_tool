@@ -24,8 +24,7 @@ from wiki_utils import (
     get_page_content,
     update_page_content,
     create_monthly_index_link,
-    get_monthly_index_path,
-    get_digest_path
+    get_monthly_index_path
 )
 
 # Global flag for graceful shutdown
@@ -206,7 +205,6 @@ def sync_object_to_wiki(object_name, synced_files, state_file):
     
     # Generate wiki title and path
     date_str = extract_date_from_filename(object_name)
-    digest_path = None
     
     if date_str:
         # Title format: DD-MM-YYYY (e.g., 07-01-2026)
@@ -215,8 +213,6 @@ def sync_object_to_wiki(object_name, synced_files, state_file):
         sub_path = date_str.replace("-","/")[:-3]
         wiki_path = f"daily-papers/{sub_path}/daily_digest_{date_str}"
         
-        # Get── digest path for monthly index
-        digest_path = get_digest_path(date_str)
     else:
         # Fallback: use object name
         base_name = os.path.basename(object_name).replace('.md', '')
@@ -239,8 +235,8 @@ def sync_object_to_wiki(object_name, synced_files, state_file):
         print(f"✓ Successfully synced: {object_name}")
         
         # Update── monthly index page if date is available
-        if date_str and digest_path:
-            update_monthly_index(date_str, digest_path)
+        if date_str and wiki_path:
+            update_monthly_index(date_str, wiki_path)
         
         return True
     else:
