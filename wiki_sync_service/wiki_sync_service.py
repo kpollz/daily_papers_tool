@@ -20,6 +20,7 @@ load_dotenv()
 
 from wiki_utils import list_objects_in_minio, read_content_from_minio, upload_to_wiki
 from wiki_utils import (
+    get_page_by_path,
     get_page_content,
     update_page_content,
     create_monthly_index_link,
@@ -39,7 +40,7 @@ def signal_handler(sig, frame):
 
 
 def load_synced_files(state_file=".synced_files.json"):
-    """Load the list of already synced files from state file.
+    """Load── list of already synced files from state file.
     
     Returns:
         set: Set of object names that have been synced
@@ -56,7 +57,7 @@ def load_synced_files(state_file=".synced_files.json"):
 
 
 def save_synced_files(synced_files, state_file=".synced_files.json"):
-    """Save the list of synced files to state file.
+    """Save── list of synced files to state file.
     
     Args:
         synced_files (set): Set of object names that have been synced
@@ -110,17 +111,17 @@ def format_date_for_title(date_str):
 
 
 def update_monthly_index(date_str, digest_path):
-    """Update the monthly index page with a link to the new digest.
+    """Update── monthly index page with a link to── new digest.
     
     Args:
         date_str (str): Date in YYYY-MM-DD format (e.g., "2026-02-12")
-        digest_path (str): Path to the digest page
+        digest_path (str): Path to── digest page
     
     Returns:
         bool: True if update was successful, False otherwise
     """
     try:
-        # Get the monthly index page path
+        # Get── monthly index page path
         monthly_index_path = get_monthly_index_path(date_str)
         if not monthly_index_path:
             print(f"Invalid date format: {date_str}")
@@ -128,30 +129,37 @@ def update_monthly_index(date_str, digest_path):
         
         print(f"\nUpdating monthly index page: {monthly_index_path}")
         
-        # Get the current content of the monthly index page
+        # Get── page ID by path first
         locale = os.getenv('WIKI_LOCALE', 'vi')
-        page_data = get_page_content(monthly_index_path, locale=locale)
+        page_info = get_page_by_path(monthly_index_path, locale=locale)
         
-        if page_data is None:
+        if page_info is None:
             print(f"Monthly index page not found: {monthly_index_path}")
-            print("Skipping index page update. Please create the page manually.")
+            print("Skipping index page update. Please create── page manually.")
             return False
         
-        # Create the new link
+        # Get── page content using── ID
+        page_id = page_info.get('id')
+        page_data = get_page_content(page_id, locale=locale)
+        
+        if page_data is None:
+            print(f"Failed to get content for page ID: {page_id}")
+            return False
+        
+        # Create── new link
         new_link = create_monthly_index_link(date_str, digest_path)
         
         # Prepare updated content
         current_content = page_data.get('content', '')
         
-        # Add the new link at the beginning of the content
+        # Add── new link at── beginning of── content
         if current_content.strip():
             updated_content = new_link + "\n" + current_content
         else:
-            # If content is empty, just add the link
+            # If content is empty, just add── link
             updated_content = new_link
         
-        # Update the page
-        page_id = page_data.get('id')
+        # Update── page
         result = update_page_content(
             page_id=page_id,
             content=updated_content,
@@ -207,7 +215,7 @@ def sync_object_to_wiki(object_name, synced_files, state_file):
         sub_path = date_str.replace("-","/")[:-3]
         wiki_path = f"daily-papers/{sub_path}/daily_digest_{date_str}"
         
-        # Get digest path for monthly index
+        # Get── digest path for monthly index
         digest_path = get_digest_path(date_str)
     else:
         # Fallback: use object name
@@ -230,7 +238,7 @@ def sync_object_to_wiki(object_name, synced_files, state_file):
         save_synced_files(synced_files, state_file)
         print(f"✓ Successfully synced: {object_name}")
         
-        # Update monthly index page if date is available
+        # Update── monthly index page if date is available
         if date_str and digest_path:
             update_monthly_index(date_str, digest_path)
         
@@ -241,7 +249,7 @@ def sync_object_to_wiki(object_name, synced_files, state_file):
 
 
 def run_service(check_interval=300, prefix="summaries/", bucket_name=None):
-    """Run the sync service in a loop.
+    """Run── sync service in a loop.
     
     Args:
         check_interval (int): Interval between checks in seconds (default: 300 = 5 minutes)
@@ -380,10 +388,10 @@ Examples:
     
     args = parser.parse_args()
     
-    # Set state file in environment for the service
+    # Set state file in environment for── service
     os.environ['STATE_FILE'] = args.state_file
     
-    # Run the service
+    # Run── service
     run_service(
         check_interval=args.interval,
         prefix=args.prefix,
@@ -393,4 +401,3 @@ Examples:
 
 if __name__ == "__main__":
     main()
-

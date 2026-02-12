@@ -6,11 +6,89 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def get_page_content(path, wiki_url=None, api_token=None, locale="vi"):
-    """Get the content of an existing wiki page using GraphQL API.
+def get_page_by_path(path, wiki_url=None, api_token=None, locale="vi"):
+    """Get page ID by path using GraphQL API.
     
     Args:
         path (str): Path of the wiki page (e.g., 'daily-papers/2026/01')
+        wiki_url (str, optional): Wiki.js GraphQL endpoint. If None, uses WIKI_URL from .env
+        api_token (str, optional): Wiki.js API token. If None, uses WIKI_API_TOKEN from .env
+        locale (str): Locale for the page (default: 'vi')
+    
+    Returns:
+        dict: Page data with id, path, and title, or None if page not found
+    """
+    try:
+        wiki_url = wiki_url or os.getenv('WIKI_URL')
+        api_token = api_token or os.getenv('WIKI_API_TOKEN')
+        
+        if not wiki_url:
+            print("Error: WIKI_URL not found in .env file.")
+            return None
+        
+        if not api_token:
+            print("Error: WIKI_API_TOKEN not found in .env file.")
+            return None
+        
+        query = """
+        query($orderBy: String!, $locale: String!) {
+          pages {
+            list(orderBy: $orderBy, locale: $locale) {
+              id
+              path
+              title
+            }
+          }
+        }
+        """
+        
+        variables = {
+            "orderBy": "TITLE",
+            "locale": locale
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {api_token}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            wiki_url,
+            json={'query': query, 'variables': variables},
+            headers=headers,
+            timeout=30
+        )
+        
+        response.raise_for_status()
+        result = response.json()
+        
+        # Check for GraphQL errors
+        if 'errors' in result:
+            print(f"GraphQL errors: {result['errors']}")
+            return None
+        
+        # Find the page with matching path
+        pages = result.get('data', {}).get('pages', {}).get('list', [])
+        for page in pages:
+            if page.get('path') == path:
+                return page
+        
+        print(f"Page not found with path: {path}")
+        return None
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error getting page by path from Wiki.js: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error getting page by path: {e}")
+        return None
+
+
+def get_page_content(page_id, wiki_url=None, api_token=None, locale="vi"):
+    """Get the content of an existing wiki page using GraphQL API by page ID.
+    
+    Args:
+        page_id (int): ID of the wiki page
         wiki_url (str, optional): Wiki.js GraphQL endpoint. If None, uses WIKI_URL from .env
         api_token (str, optional): Wiki.js API token. If None, uses WIKI_API_TOKEN from .env
         locale (str): Locale for the page (default: 'vi')
@@ -31,13 +109,15 @@ def get_page_content(path, wiki_url=None, api_token=None, locale="vi"):
             return None
         
         query = """
-        query($path: String!, $locale: String!) {
+        query($id: Int!, $locale: String!) {
           pages {
-            single(path: $path, locale: $locale) {
+            single(id: $id, locale: $locale) {
               id
               path
               title
               content
+              createdAt
+              updatedAt
               locale
               description
             }
@@ -46,7 +126,7 @@ def get_page_content(path, wiki_url=None, api_token=None, locale="vi"):
         """
         
         variables = {
-            "path": path,
+            "id": page_id,
             "locale": locale
         }
         
