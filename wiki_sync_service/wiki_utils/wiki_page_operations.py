@@ -31,9 +31,9 @@ def get_page_by_path(path, wiki_url=None, api_token=None, locale="vi"):
             return None
         
         query = """
-        query($orderBy: String!, $locale: String!) {
+        query($orderBy: PageOrderBy!) {
           pages {
-            list(orderBy: $orderBy, locale: $locale) {
+            list(orderBy: $orderBy) {
               id
               path
               title
@@ -43,8 +43,7 @@ def get_page_by_path(path, wiki_url=None, api_token=None, locale="vi"):
         """
         
         variables = {
-            "orderBy": "TITLE",
-            "locale": locale
+            "orderBy": "TITLE"
         }
         
         headers = {
@@ -109,9 +108,9 @@ def get_page_content(page_id, wiki_url=None, api_token=None, locale="vi"):
             return None
         
         query = """
-        query($id: Int!, $locale: String!) {
+        query($id: Int!) {
           pages {
-            single(id: $id, locale: $locale) {
+            single(id: $id) {
               id
               path
               title
@@ -126,8 +125,7 @@ def get_page_content(page_id, wiki_url=None, api_token=None, locale="vi"):
         """
         
         variables = {
-            "id": page_id,
-            "locale": locale
+            "id": page_id
         }
         
         headers = {
