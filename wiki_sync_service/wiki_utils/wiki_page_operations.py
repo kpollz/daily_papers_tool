@@ -159,17 +159,15 @@ def get_page_content(page_id, wiki_url=None, api_token=None, locale="vi"):
         return None
 
 
-def update_page_content(page_id, content, title=None, wiki_url=None, api_token=None, locale="vi", description="", tags=None):
+def update_page_content(page_id, content, path, wiki_url=None, api_token=None, tags=["papers-summary", "huggingface-papers"]):
     """Update an existing wiki page using GraphQL API.
     
     Args:
         page_id (int): ID of the page to update
         content (str): New markdown content
-        title (str, optional): New title (if None, keeps existing title)
+        path (str): Path of the page
         wiki_url (str, optional): Wiki.js GraphQL endpoint. If None, uses WIKI_URL from .env
         api_token (str, optional): Wiki.js API token. If None, uses WIKI_API_TOKEN from .env
-        locale (str): Locale for the page (default: 'vi')
-        description (str): Description of the page (default: empty string)
         tags (list): List of tags for the page (default: None - keeps existing)
     
     Returns:
@@ -189,15 +187,14 @@ def update_page_content(page_id, content, title=None, wiki_url=None, api_token=N
         
         # Build the mutation with optional title parameter
         query = """
-        mutation($id: Int!, $content: String!, $title: String, $locale: String!, $description: String!, $tags: [String!]) {
+        mutation($id: Int!, $content: String!, $path: String!, $tags: [String!]) {
           pages {
             update(
               id: $id,
               content: $content,
-              title: $title,
-              locale: $locale,
-              description: $description,
-              tags: $tags
+              path: $path,
+              tags: $tags,
+              isPublished: true
             ) {
               responseResult {
                 succeeded
@@ -205,8 +202,7 @@ def update_page_content(page_id, content, title=None, wiki_url=None, api_token=N
               }
               page {
                 id
-                path
-                title
+                content
               }
             }
           }
@@ -216,13 +212,10 @@ def update_page_content(page_id, content, title=None, wiki_url=None, api_token=N
         variables = {
             "id": page_id,
             "content": content,
-            "title": title,
-            "locale": locale,
-            "description": description
+            "path": path,
+            "tags": tags
         }
         
-        if tags is not None:
-            variables["tags"] = tags
         
         headers = {
             "Authorization": f"Bearer {api_token}",

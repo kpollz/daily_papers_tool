@@ -163,7 +163,7 @@ def update_monthly_index(date_str, digest_path):
         result = update_page_content(
             page_id=page_id,
             content=updated_content,
-            locale=locale
+            path=page_data.get('path', '')
         )
         
         if result:
