@@ -81,7 +81,7 @@ def generate_markdown_report(summaries, date_str, model_name):
         
     return report
 
-def run_daily_digest(date_str, model="gpt-4.1-mini"):
+def run_daily_digest(date_str, model="gemini-2.0-flash"):
     """Main function to run the daily paper digest process."""
     print(f"--- Starting Daily Paper Digest for {date_str} using {model} ---")
     
@@ -198,7 +198,7 @@ def run_daily_digest(date_str, model="gpt-4.1-mini"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Hugging Face Daily Paper Digest Tool")
     parser.add_argument("--date", type=str, help="Date in YYYY-MM-DD format", default=datetime.now().strftime("%Y-%m-%d"))
-    parser.add_argument("--model", type=str, choices=["gpt-4.1-mini", "gemini-2.5-flash"], default="gpt-4.1-mini", 
+    parser.add_argument("--model", type=str, choices=["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"], default="gemini-2.0-flash", 
                         help="LLM model to use for summarization")
     
     args = parser.parse_args()

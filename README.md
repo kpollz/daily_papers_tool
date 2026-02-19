@@ -7,7 +7,7 @@ An automated tool that fetches, downloads, summarizes, and manages daily trendin
 - **Automated Paper Fetching**: Retrieves daily trending papers from Hugging Face API with configurable upvote thresholds
 - **Intelligent Database Storage**: PostgreSQL database for persistent storage of papers, summaries, and digest reports
 - **PDF Processing**: Downloads and extracts text from ArXiv papers
-- **AI-Powered Summarization**: Uses LLMs (OpenAI GPT-4 or Google Gemini) to generate structured summaries
+- **AI-Powered Summarization**: Uses LangChain with Google Gemini models and Pydantic structured output for reliable JSON responses
 - **MinIO Integration**: Uploads generated markdown reports to MinIO object storage
 - **Duplicate Prevention**: Skips papers that have already been summarized
 - **Organized Storage**: Reports organized by year/month structure
@@ -124,7 +124,7 @@ Edit `.env` with your actual values (see [Configuration](#configuration) section
 Create a `.env` file in the project root with the following variables:
 
 ```env
-OPENAI_API_KEY=""
+GOOGLE_API_KEY=""
 MINIO_ACCESS_KEY=""
 MINIO_SECRET_KEY=""
 API_PASSWORD=""
@@ -164,7 +164,7 @@ python daily_papers_tool.py --date 2026-01-02 --model gemini-2.5-flash
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
 | `--date` | string | Today's date | Date in YYYY-MM-DD format |
-| `--model` | string | gpt-4.1-mini | LLM model to use (gpt-4.1-mini or gemini-2.5-flash) |
+| `--model` | string | gemini-2.0-flash | LLM model to use (gemini-2.0-flash, gemini-2.5-flash, or gemini-2.5-pro) |
 
 ## 🗄️ Database Schema
 
@@ -321,13 +321,12 @@ daily_papers_tool/
 
 ## 🔌 Supported Models
 
-### OpenAI
-- **gpt-4.1-mini** (default) - Fast and efficient model
+### Google Gemini (via LangChain)
+- **gemini-2.0-flash** (default) - Fast and efficient model
+- **gemini-2.5-flash** - Latest Gemini Flash model with strong performance
+- **gemini-2.5-pro** - Most capable Gemini model for complex tasks
 
-### Google Gemini
-- **gemini-2.5-flash** - Latest Gemini model with strong performance
-
-Both models use the `OPENAI_API_KEY` environment variable due to OpenAI-compatible API configuration.
+All models use LangChain with Pydantic structured output to ensure reliable JSON responses. Set the `GOOGLE_API_KEY` environment variable.
 
 ## 🔄 Workflow
 
@@ -348,7 +347,7 @@ Both models use the `OPENAI_API_KEY` environment variable due to OpenAI-compatib
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `OPENAI_API_KEY` | Yes | OpenAI or Gemini API key | `sk-...` |
+| `GOOGLE_API_KEY` | Yes | Google Gemini API key | `AIza...` |
 | `MINIO_ACCESS_KEY` | Yes | MinIO access key | `minioadmin` |
 | `MINIO_SECRET_KEY` | Yes | MinIO secret key | `minioadmin` |
 | `MINIO_ENDPOINT` | No | MinIO server endpoint (default: localhost:9000) | `localhost:9000` |
