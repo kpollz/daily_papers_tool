@@ -15,12 +15,12 @@ def get_engine():
         _engine = init_db()
     return _engine
 
-def save_paper_and_summary(paper_info, summary_json, model_used, text_length):
+def save_paper_and_summary(paper_info, summary_json, model_used, text_length, engine):
     """
     Save paper information and its summary to the database.
     Returns the created PaperSummary object.
     """
-    session = get_session(get_engine())
+    session = get_session(engine)
     
     try:
         # Check if paper already exists
@@ -92,13 +92,13 @@ def save_paper_and_summary(paper_info, summary_json, model_used, text_length):
     finally:
         session.close()
 
-def get_papers_with_summaries(date_str=None):
+def get_papers_with_summaries(engine, date_str=None):
     """
     Retrieve papers with their summaries from the database.
     If date_str is provided, filter by publication date.
     Returns list of dictionaries with paper and summary data.
     """
-    session = get_session(get_engine())
+    session = get_session(engine)
     
     try:
         query = session.query(Paper).join(PaperSummary)
@@ -142,12 +142,12 @@ def get_papers_with_summaries(date_str=None):
     finally:
         session.close()
 
-def save_digest_report(date_str, report_path, minio_object_name, paper_count, model_used):
+def save_digest_report(date_str, report_path, minio_object_name, paper_count, model_used, engine):
     """
     Save digest report metadata to the database.
     Returns the created DigestReport object.
     """
-    session = get_session(get_engine())
+    session = get_session(engine)
     
     try:
         report = DigestReport(
@@ -170,12 +170,12 @@ def save_digest_report(date_str, report_path, minio_object_name, paper_count, mo
     finally:
         session.close()
 
-def get_summary_by_paper_id(paper_id):
+def get_summary_by_paper_id(paper_id, engine):
     """
     Get a paper summary by its ID.
     Returns the PaperSummary object or None.
     """
-    session = get_session(get_engine())
+    session = get_session(engine)
     
     try:
         summary = session.query(PaperSummary).filter_by(paper_id=paper_id).first()
@@ -186,12 +186,12 @@ def get_summary_by_paper_id(paper_id):
     finally:
         session.close()
 
-def check_paper_exists(paper_id):
+def check_paper_exists(paper_id, engine):
     """
     Check if a paper and its summary already exist in the database.
     Returns (paper_exists, summary_exists)
     """
-    session = get_session(get_engine())
+    session = get_session(engine)
     
     try:
         paper = session.query(Paper).filter_by(id=paper_id).first()

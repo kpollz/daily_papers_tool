@@ -100,7 +100,7 @@ def run_daily_digest(date_str, model="gemini-2.0-flash"):
     
     # Initialize database
     print("Phase 3: Initializing database...")
-    get_engine()
+    engine = get_engine()
     
     # 4. Read and Summarize each paper
     print("Phase 4: Reading and Summarizing papers...")
@@ -109,13 +109,13 @@ def run_daily_digest(date_str, model="gemini-2.0-flash"):
         print(f"Processing paper {i+1}/{len(papers)}: {paper['title']}")
         
         # Check if paper already has a summary in database
-        paper_exists, summary_exists = check_paper_exists(paper['id'])
+        paper_exists, summary_exists = check_paper_exists(paper['id'], engine)
         
         if summary_exists:
             print(f"Paper {paper['id']} already has a summary in database. Skipping...")
             # Still add to summaries for report generation
             from database.db_utils import get_papers_with_summaries
-            existing_summaries = get_papers_with_summaries()
+            existing_summaries = get_papers_with_summaries(engine=engine)
             for existing in existing_summaries:
                 if existing['paper']['id'] == paper['id']:
                     summaries.append(existing)
@@ -128,15 +128,15 @@ def run_daily_digest(date_str, model="gemini-2.0-flash"):
             continue
             
         text = extract_text_from_pdf(paper['local_path'])
-        summary_json = summarize_paper(paper, text, model=model)
+        summary_json = summarize_paper(paper, text, model=model) if text != "" else None
         
         if summary_json:
             # Save to database
-            save_paper_and_summary(paper, summary_json, model, len(text))
+            save_paper_and_summary(paper, summary_json, model, len(text), engine)
             
             # Get the saved summary for report generation
             from database.db_utils import get_summary_by_paper_id
-            summary_db = get_summary_by_paper_id(paper['id'])
+            summary_db = get_summary_by_paper_id(paper['id'], engine)
             if summary_db:
                 summary_entry = {
                     'paper': paper,
