@@ -364,7 +364,7 @@ def create_monthly_index_page(date_str, wiki_url=None, api_token=None, locale="v
         """
         
         variables = {
-            "content": "",
+            "content": "{.links-list}",
             "title": monthly_title,
             "path": monthly_path,
             "editor": "markdown",
