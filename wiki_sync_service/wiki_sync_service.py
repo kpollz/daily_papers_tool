@@ -24,7 +24,8 @@ from wiki_utils import (
     get_page_content,
     update_page_content,
     create_monthly_index_link,
-    get_monthly_index_path
+    get_monthly_index_path,
+    create_monthly_index_page
 )
 
 # Global flag for graceful shutdown
@@ -134,8 +135,14 @@ def update_monthly_index(date_str, digest_path):
         
         if page_info is None:
             print(f"Monthly index page not found: {monthly_index_path}")
-            print("Skipping index page update. Please create── page manually.")
-            return False
+            print("Creating new monthly index page...")
+            
+            # Create the monthly index page using the dedicated function
+            page_info = create_monthly_index_page(date_str, locale=locale)
+            
+            if page_info is None:
+                print(f"Failed to create monthly index page: {monthly_index_path}")
+                return False
         
         # Get── page content using── ID
         page_id = page_info.get('id')

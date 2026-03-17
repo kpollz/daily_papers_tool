@@ -10,7 +10,8 @@ from .wiki_page_operations import (
     get_page_content,
     update_page_content,
     create_monthly_index_link,
-    get_monthly_index_path
+    get_monthly_index_path,
+    create_monthly_index_page
 )
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     'get_page_content',
     'update_page_content',
     'create_monthly_index_link',
-    'get_monthly_index_path'
+    'get_monthly_index_path',
+    'create_monthly_index_page'
 ]
 

@@ -297,3 +297,119 @@ def get_monthly_index_path(date_str):
         month = parts[1]
         return f"daily-papers/{year}/{month}"
     return None
+
+
+def create_monthly_index_page(date_str, wiki_url=None, api_token=None, locale="vi"):
+    """Create a new monthly index page in Wiki.js.
+    
+    Args:
+        date_str (str): Date in YYYY-MM-DD format (e.g., "2026-02-12")
+        wiki_url (str, optional): Wiki.js GraphQL endpoint. If None, uses WIKI_URL from .env
+        api_token (str, optional): Wiki.js API token. If None, uses WIKI_API_TOKEN from .env
+        locale (str): Locale for the page (default: 'vi')
+    
+    Returns:
+        dict: Page data with id, path, and title if successful, None otherwise
+    """
+    try:
+        wiki_url = wiki_url or os.getenv('WIKI_URL')
+        api_token = api_token or os.getenv('WIKI_API_TOKEN')
+        
+        if not wiki_url:
+            print("Error: WIKI_URL not found in .env file.")
+            return None
+        
+        if not api_token:
+            print("Error: WIKI_API_TOKEN not found in .env file.")
+            return None
+        
+        # Extract month and year from date_str
+        parts = date_str.split("-")
+        if len(parts) != 3:
+            print(f"Invalid date format: {date_str}")
+            return None
+        
+        year = parts[0]
+        month = parts[1]
+        monthly_title = f"Danh sách tóm tắt các bài báo theo ngày trong tháng {month}/{year}"
+        monthly_path = f"daily-papers/{year}/{month}"
+        
+        query = """
+        mutation($content: String!, $title: String!, $path: String!, $editor: String!, $isPublished: Boolean!, $isPrivate: Boolean!, $locale: String!, $description: String!, $tags: [String!]!) {
+          pages {
+            create(
+              content: $content,
+              title: $title,
+              path: $path,
+              editor: $editor,
+              isPublished: $isPublished,
+              isPrivate: $isPrivate,
+              locale: $locale,
+              description: $description,
+              tags: $tags
+            ) {
+              responseResult {
+                succeeded
+                message
+                slug
+              }
+              page {
+                id
+                path
+                title
+              }
+            }
+          }
+        }
+        """
+        
+        variables = {
+            "content": "",
+            "title": monthly_title,
+            "path": monthly_path,
+            "editor": "markdown",
+            "isPublished": True,
+            "isPrivate": False,
+            "locale": locale,
+            "description": "",
+            "tags": ["monthly-index", "papers-summary"]
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {api_token}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            wiki_url,
+            json={'query': query, 'variables': variables},
+            headers=headers,
+            timeout=30
+        )
+        
+        response.raise_for_status()
+        result = response.json()
+        
+        # Check for GraphQL errors
+        if 'errors' in result:
+            print(f"GraphQL errors: {result['errors']}")
+            return None
+        
+        # Check if the mutation was successful
+        response_result = result.get('data', {}).get('pages', {}).get('create', {}).get('responseResult', {})
+        response_slug = response_result.get('slug', 'Unknown error')
+        
+        if response_result.get('succeeded') or response_slug == "PageDuplicateCreate":
+            print(f"✓ Successfully created monthly index page: {monthly_path}")
+            page_data = result.get('data', {}).get('pages', {}).get('create', {}).get('page')
+            return page_data
+        else:
+            print(f"Wiki.js create failed: {response_result.get('message', 'Unknown error')}")
+            return None
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error creating monthly index page: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error creating monthly index page: {e}")
+        return None
