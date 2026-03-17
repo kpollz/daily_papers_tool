@@ -143,6 +143,14 @@ def run_daily_digest(date_str, model="gemini-2.0-flash"):
                     'summary': summary_db
                 }
                 summaries.append(summary_entry)
+
+                # Delete the PDF file after processing
+                try:
+                    os.remove(paper['local_path'])
+                    print(f"Deleted temporary file: {paper['local_path']}")
+                except Exception as e:
+                    print(f"Error deleting file {paper['local_path']}: {e}")
+                    
             else:
                 print(f"Failed to retrieve saved summary for {paper['id']}")
         else:
@@ -156,13 +164,6 @@ def run_daily_digest(date_str, model="gemini-2.0-flash"):
         #     summary_entry['figure_path'] = os.path.join(download_dir, figure_filename)
         #     print(f"Figure extracted: {summary_entry['figure_path']}")
         
-        # Delete the PDF file after processing
-        # try:
-        #     os.remove(paper['local_path'])
-        #     print(f"Deleted temporary file: {paper['local_path']}")
-        # except Exception as e:
-        #     print(f"Error deleting file {paper['local_path']}: {e}")
-
         # Be polite to ArXiv
         time.sleep(5)
         
