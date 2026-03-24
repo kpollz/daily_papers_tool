@@ -51,7 +51,7 @@ def get_previous_day_date():
     return date_str
 
 
-def run_scheduled_job(model="gemini-2.0-flash"):
+def run_scheduled_job(model="gemini-2.5-flash"):
     """
     Chạy job crawl papers cho ngày hôm trước
     """
@@ -84,7 +84,7 @@ def main():
     Schedule job chạy vào 12:00 trưa giờ VN mỗi ngày
     """
     # Get model from environment or use default
-    model = os.getenv('LLM_MODEL', 'gemini-2.0-flash')
+    model = os.getenv('LLM_MODEL', 'gemini-2.5-flash')
     
     logger.info("Starting Daily Papers Scheduler Service")
     logger.info(f"Using model: {model}")
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model", 
         type=str, 
-        choices=["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
+        choices=["gemini-2.5-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
         help="LLM model to use (overrides env variable)"
     )
     parser.add_argument(
@@ -153,9 +153,9 @@ if __name__ == "__main__":
         logger.info("Running in test mode (run once)")
         if args.date:
             logger.info(f"Processing specific date: {args.date}")
-            run_daily_digest(args.date, model=os.getenv('LLM_MODEL', 'gemini-2.0-flash'))
+            run_daily_digest(args.date, model=os.getenv('LLM_MODEL', 'gemini-2.5-flash'))
         else:
-            run_scheduled_job(model=os.getenv('LLM_MODEL', 'gemini-2.0-flash'))
+            run_scheduled_job(model=os.getenv('LLM_MODEL', 'gemini-2.5-flash'))
     else:
         # Run as scheduler service
         main()
