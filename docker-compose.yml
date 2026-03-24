@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  daily-papers-scheduler:
+    build: .
+    container_name: daily-papers-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Ensure Vietnam timezone
+      - TZ=Asia/Ho_Chi_Minh
+      # Optional: Run immediately on first startup
+      # - RUN_ON_STARTUP=true
+    volumes:
+      # Persist scheduler logs
+      - ./logs:/app/logs
+      # Persist summaries output
+      - ./summaries:/app/summaries
+      # Persist papers (temporarily downloaded PDFs)
+      - ./papers:/app/papers
+      # Optional: Persist database if using SQLite (not recommended for production)
+      # - ./database:/app/database
+    networks:
+      - daily-papers-network
+    # Health check to ensure service is running
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; exit(0) if os.path.exists('scheduler.log') else exit(1)"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  daily-papers-network:
+    driver: bridge

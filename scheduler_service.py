@@ -1,0 +1,161 @@
+"""
+Scheduler Service for Daily Papers Tool
+Chạy cron job vào 12:00 trưa giờ VN (UTC+7) để crawl papers của ngày hôm trước
+"""
+import os
+import sys
+import logging
+import schedule
+import time
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(override=True)
+
+# Add current directory to path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from daily_papers_tool import run_daily_digest
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('logs/scheduler.log', encoding='utf-8')
+    ]
+)
+logger = logging.getLogger(__name__)
+
+
+def get_previous_day_date():
+    """
+    Lấy ngày hôm trước để crawl papers.
+    Xử lý đúng edge case khi sang tháng mới hoặc năm mới.
+    
+    Returns:
+        str: Date string in YYYY-MM-DD format
+    """
+    # Lấy thời gian hiện tại theo giờ VN (UTC+7)
+    now_vn = datetime.now()
+    
+    # Lùi lại 1 ngày - timedelta xử lý đúng tất cả edge cases
+    # bao gồm sang tháng mới, năm mới, leap year
+    previous_day = now_vn - timedelta(days=1)
+    
+    date_str = previous_day.strftime('%Y-%m-%d')
+    logger.info(f"Crawling papers for date: {date_str} (previous day from {now_vn.strftime('%Y-%m-%d')})")
+    
+    return date_str
+
+
+def run_scheduled_job(model="gemini-2.0-flash"):
+    """
+    Chạy job crawl papers cho ngày hôm trước
+    """
+    logger.info("=" * 60)
+    logger.info("Starting scheduled daily paper digest job")
+    logger.info("=" * 60)
+    
+    try:
+        date_str = get_previous_day_date()
+        logger.info(f"Running digest for date: {date_str} with model: {model}")
+        
+        result = run_daily_digest(date_str, model=model)
+        
+        if result:
+            logger.info(f"Job completed successfully. Report saved to: {result}")
+        else:
+            logger.warning("Job completed but no report generated (possibly no papers found)")
+            
+    except Exception as e:
+        logger.error(f"Error in scheduled job: {e}", exc_info=True)
+    
+    logger.info("=" * 60)
+    logger.info("Scheduled job finished")
+    logger.info("=" * 60)
+
+
+def main():
+    """
+    Main entry point cho scheduler service
+    Schedule job chạy vào 12:00 trưa giờ VN mỗi ngày
+    """
+    # Get model from environment or use default
+    model = os.getenv('LLM_MODEL', 'gemini-2.0-flash')
+    
+    logger.info("Starting Daily Papers Scheduler Service")
+    logger.info(f"Using model: {model}")
+    logger.info(f"Current time (VN): {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("Scheduled to run daily at 12:00 (noon) Vietnam time")
+    
+    # Schedule job at 12:00 noon Vietnam time
+    schedule.every().day.at("12:00").do(run_scheduled_job, model=model)
+    
+    # Log next run time
+    next_run = schedule.next_run()
+    logger.info(f"Next scheduled run: {next_run}")
+    
+    # Run immediately on startup if specified
+    if os.getenv('RUN_ON_STARTUP', 'false').lower() == 'true':
+        logger.info("RUN_ON_STARTUP is enabled. Running job immediately...")
+        run_scheduled_job(model=model)
+    
+    # Main loop
+    logger.info("Scheduler is running. Press Ctrl+C to stop.")
+    try:
+        while True:
+            schedule.run_pending()
+            time.sleep(60)  # Check every minute
+            
+            # Log heartbeat every hour
+            current_minute = datetime.now().minute
+            if current_minute == 0:
+                logger.debug(f"Scheduler heartbeat. Next run: {schedule.next_run()}")
+                
+    except KeyboardInterrupt:
+        logger.info("Scheduler stopped by user")
+    except Exception as e:
+        logger.error(f"Scheduler error: {e}", exc_info=True)
+
+
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Daily Papers Scheduler Service")
+    parser.add_argument(
+        "--run-now", 
+        action="store_true", 
+        help="Run the job immediately (for testing)"
+    )
+    parser.add_argument(
+        "--model", 
+        type=str, 
+        choices=["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
+        help="LLM model to use (overrides env variable)"
+    )
+    parser.add_argument(
+        "--date",
+        type=str,
+        help="Specific date to process (YYYY-MM-DD). Only used with --run-now"
+    )
+    
+    args = parser.parse_args()
+    
+    # Override model if specified
+    if args.model:
+        os.environ['LLM_MODEL'] = args.model
+    
+    if args.run_now:
+        # Run once immediately (for testing)
+        logger.info("Running in test mode (run once)")
+        if args.date:
+            logger.info(f"Processing specific date: {args.date}")
+            run_daily_digest(args.date, model=os.getenv('LLM_MODEL', 'gemini-2.0-flash'))
+        else:
+            run_scheduled_job(model=os.getenv('LLM_MODEL', 'gemini-2.0-flash'))
+    else:
+        # Run as scheduler service
+        main()
