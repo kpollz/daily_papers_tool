@@ -4,7 +4,6 @@ load_dotenv(override=True)
 import sys
 import argparse
 from datetime import datetime
-import time
 
 # Add current directory to path to import local modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -70,9 +69,6 @@ def generate_markdown_report(summaries, date_str, model_name):
         report += "| Nền tảng | Đường dẫn |\n"
         report += "| :--- | :--- |\n"
         for platform, link in links:
-            # if platform == "GitHub" and "Github:" in link:
-            #     link = link.replace("Github:", "").strip()
-            
             if link.startswith('http'):
                 report += f"| {platform} | [{link}]({link}) |\n"
             else:
@@ -81,120 +77,35 @@ def generate_markdown_report(summaries, date_str, model_name):
         
     return report
 
-def run_daily_digest(date_str, model="gemini-2.0-flash"):
-    """Main function to run the daily paper digest process."""
+def run_daily_digest(date_str, model="google/gemma-4-31b-it"):
+    """Main function to run the daily paper digest process via LangGraph."""
     print(f"--- Starting Daily Paper Digest for {date_str} using {model} ---")
     
-    # 1. Get the paper list
-    print("Phase 1: Fetching paper list...")
-    papers = fetch_daily_papers(date_str)
-    if not papers:
-        print("No papers found or error in fetching. Exiting.")
-        return
-    print(f"Found {len(papers)} papers.")
-
-    # 2. Download all the papers into a date-specific folder
-    print(f"Phase 2: Downloading PDFs into papers/{date_str}...")
-    download_dir = os.path.join("papers", date_str)
-    download_all_papers(papers, download_dir=download_dir)
+    # Ensure the LLM provider picks up the selected model
+    os.environ["LLM_MODEL"] = model
     
-    # Initialize database
-    print("Phase 3: Initializing database...")
-    engine = get_engine()
+    # Lazy import to avoid circular dependencies during module load
+    from graph import build_digest_graph
+    graph = build_digest_graph()
     
-    # 4. Read and Summarize each paper
-    print("Phase 4: Reading and Summarizing papers...")
-    summaries = []
-    for i, paper in enumerate(papers):
-        print(f"Processing paper {i+1}/{len(papers)}: {paper['title']}")
-        
-        # Check if paper already has a summary in database
-        paper_exists, summary_exists = check_paper_exists(paper['id'], engine)
-        
-        if summary_exists:
-            print(f"Paper {paper['id']} already has a summary in database. Skipping...")
-            # Still add to summaries for report generation
-            from database.db_utils import get_papers_with_summaries
-            existing_summaries = get_papers_with_summaries(engine=engine)
-            for existing in existing_summaries:
-                if existing['paper']['id'] == paper['id']:
-                    summaries.append(existing)
-                    break
-            time.sleep(5)
-            continue
-        
-        if 'local_path' not in paper or not os.path.exists(paper['local_path']):
-            print(f"Skipping paper {paper['id']}: PDF not found.")
-            continue
-            
-        text = extract_text_from_pdf(paper['local_path'])
-        summary_json = summarize_paper(paper, text, model=model) if text != "" else None
-        
-        if summary_json:
-            # Save to database
-            save_paper_and_summary(paper, summary_json, model, len(text), engine)
-            
-            # Get the saved summary for report generation
-            from database.db_utils import get_summary_by_paper_id
-            summary_db = get_summary_by_paper_id(paper['id'], engine)
-            if summary_db:
-                summary_entry = {
-                    'paper': paper,
-                    'summary': summary_db
-                }
-                summaries.append(summary_entry)
-
-                # Delete the PDF file after processing
-                try:
-                    os.remove(paper['local_path'])
-                    print(f"Deleted temporary file: {paper['local_path']}")
-                except Exception as e:
-                    print(f"Error deleting file {paper['local_path']}: {e}")
-                    
-            else:
-                print(f"Failed to retrieve saved summary for {paper['id']}")
-        else:
-            print(f"Failed to generate summary for {paper['id']}")
-        
-        # Extract overview figure
-        # print(f"Extracting overview figure for {paper['id']}...")
-        # figure_filename = extract_first_figure(paper['id'], download_dir)
-        
-        # if figure_filename:
-        #     summary_entry['figure_path'] = os.path.join(download_dir, figure_filename)
-        #     print(f"Figure extracted: {summary_entry['figure_path']}")
-        
-        # Be polite to ArXiv
-        time.sleep(5)
-        
-    # 5. Make a comprehension Markdown Report
-    print("Phase 5: Generating Markdown Report...")
-    markdown_report = generate_markdown_report(summaries, date_str, model)
+    result = graph.invoke({
+        "date_str": date_str,
+        "model_name": model,
+        "papers": [],
+        "papers_to_process": [],
+        "summaries": [],
+        "failed_papers": [],
+        "final_report": "",
+        "report_path": "",
+        "retry_count": 0,
+    })
     
-    # Parse date to get year and month for organized storage
-    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-    year = date_obj.strftime('%Y')
-    month = date_obj.strftime('%m')
-    organized_dir = os.path.join("summaries", year, month)
-    
-    # Create directory structure if it doesn't exist
-    if not os.path.exists(organized_dir):
-        os.makedirs(organized_dir, exist_ok=True)
-    
-    report_filename = os.path.join(organized_dir, f"daily_digest_{date_str}.md")
-
-    
-    with open(report_filename, 'w', encoding='utf-8') as f:
-        f.write(markdown_report)
-        
-    print(f"--- Digest Complete. Report saved to {report_filename} ---")
-    
-    # 6. Upload to MinIO with organized structure
-    print("Phase 6: Uploading to MinIO...")
-    minio_object_name = f"summaries/{year}/{month}/daily_digest_{date_str}.md"
-    upload_to_minio(report_filename, minio_object_name)
-        
-    return report_filename
+    report_path = result.get("report_path")
+    if report_path:
+        print(f"--- Digest Complete. Report saved to {report_path} ---")
+    else:
+        print("--- Digest Complete. No report generated. ---")
+    return report_path
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Hugging Face Daily Paper Digest Tool")

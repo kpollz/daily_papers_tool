@@ -7,7 +7,9 @@ An automated tool that fetches, downloads, summarizes, and manages daily trendin
 - **Automated Paper Fetching**: Retrieves daily trending papers from Hugging Face API with configurable upvote thresholds
 - **Intelligent Database Storage**: PostgreSQL database for persistent storage of papers, summaries, and digest reports
 - **PDF Processing**: Downloads and extracts text from ArXiv papers
-- **AI-Powered Summarization**: Uses LangChain with Google Gemini models and Pydantic structured output for reliable JSON responses
+- **AI-Powered Summarization**: Uses LangGraph + LangChain with NVIDIA NIM (OpenAI-compatible) and Pydantic structured output for reliable JSON responses
+- **Parallel Processing**: Summarizes multiple papers concurrently with configurable batch limits
+- **Quality Gates & Retry Logic**: Validates summary completeness and auto-retries failed papers with adjusted parameters
 - **MinIO Integration**: Uploads generated markdown reports to MinIO object storage
 - **Duplicate Prevention**: Skips papers that have already been summarized
 - **Organized Storage**: Reports organized by year/month structure
@@ -40,11 +42,15 @@ An automated tool that fetches, downloads, summarizes, and manages daily trendin
 
     subgraph "Daily Papers Digest Tool"
         B1[Fetch Papers] --> B2[Download PDFs]
-        B2 --> B3[Extract Text]
-        B3 --> B4[LLM Summarization]
-        B4 --> B5[Generate Markdown Report]
-        B5 --> B6[Upload to MinIO]
+        B2 --> B3[Filter Duplicates]
+        B3 --> B4[Extract Text]
+        B4 --> B5[Parallel LLM Summarization]
+        B5 --> B6[Quality Gate]
+        B6 -->|Retry| B5
         B6 --> B7[Save to PostgreSQL]
+        B7 --> B8[Generate Markdown Report]
+        B8 --> B9[Upload to MinIO]
+        B9 --> B10[Cleanup]
     end
 
     
@@ -69,7 +75,7 @@ graph LR
 - Python 3.8 or higher
 - PostgreSQL 12 or higher
 - MinIO server (for object storage)
-- OpenAI API key or Google Gemini API key
+- NVIDIA NIM API key (from build.nvidia.com)
 
 **Optional (for Wiki Sync Service)**:
 - Wiki.js instance
@@ -124,7 +130,11 @@ Edit `.env` with your actual values (see [Configuration](#configuration) section
 Create a `.env` file in the project root with the following variables:
 
 ```env
-GOOGLE_API_KEY=""
+NVIDIA_API_KEY=""
+NVIDIA_BASE_URL="https://integrate.api.nvidia.com/v1"
+LLM_MODEL="google/gemma-4-31b-it"
+MAX_PAPERS_PER_BATCH=5
+SUMMARY_MAX_RETRIES=2
 MINIO_ACCESS_KEY=""
 MINIO_SECRET_KEY=""
 API_PASSWORD=""
@@ -147,16 +157,16 @@ python daily_papers_tool.py
 python daily_papers_tool.py --date 2026-01-02
 ```
 
-#### Using Google Gemini Model
+#### Using NVIDIA NIM Model
 
 ```bash
-python daily_papers_tool.py --model gemini-2.5-flash
+python daily_papers_tool.py --model google/gemma-4-31b-it
 ```
 
 #### Complete Example
 
 ```bash
-python daily_papers_tool.py --date 2026-01-02 --model gemini-2.5-flash
+python daily_papers_tool.py --date 2026-01-02 --model google/gemma-4-31b-it
 ```
 
 #### Command-Line Arguments
@@ -164,7 +174,7 @@ python daily_papers_tool.py --date 2026-01-02 --model gemini-2.5-flash
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
 | `--date` | string | Today's date | Date in YYYY-MM-DD format |
-| `--model` | string | gemini-2.0-flash | LLM model to use (gemini-2.0-flash, gemini-2.5-flash, or gemini-2.5-pro) |
+| `--model` | string | google/gemma-4-31b-it | LLM model ID for NVIDIA NIM (e.g., google/gemma-4-31b-it) |
 
 ## 🗄️ Database Schema
 
@@ -321,25 +331,35 @@ daily_papers_tool/
 
 ## 🔌 Supported Models
 
-### Google Gemini (via LangChain)
-- **gemini-2.0-flash** (default) - Fast and efficient model
-- **gemini-2.5-flash** - Latest Gemini Flash model with strong performance
-- **gemini-2.5-pro** - Most capable Gemini model for complex tasks
+### NVIDIA NIM (via LangChain OpenAI-compatible)
+- **google/gemma-4-31b-it** (default) - Powerful open model hosted on NVIDIA NIM
+- Supports any model available on your NVIDIA NIM endpoint
 
-All models use LangChain with Pydantic structured output to ensure reliable JSON responses. Set the `GOOGLE_API_KEY` environment variable.
+All models use LangGraph + LangChain with Pydantic structured output to ensure reliable JSON responses. Set the `NVIDIA_API_KEY` environment variable. Get your key at [build.nvidia.com](https://build.nvidia.com).
+
+### Rate Limiting & Parallel Processing
+
+The free tier of NVIDIA NIM allows **40 requests per minute (RPM)**. To stay safely within this limit:
+
+- **Batch size**: Default `MAX_PAPERS_PER_BATCH=5` ensures at most 5 parallel workers
+- **Stagger delay**: Each worker sleeps 1 second before calling the API
+- **Retry backoff**: On 429/500 errors, exponential backoff (2s, 4s, 8s) up to 3 attempts
+
+With these defaults, even 5 parallel papers only consume ~5 requests per minute, leaving plenty of headroom.
 
 ## 🔄 Workflow
 
 1. **Fetch Papers**: Retrieves daily trending papers from Hugging Face API (filtered by upvotes ≥ 10)
 2. **Download PDFs**: Downloads PDF files from ArXiv into date-specific folders
-3. **Initialize Database**: Connects to PostgreSQL and creates tables if needed
-4. **Check Duplicates**: Skips papers that already have summaries in the database
-5. **Extract Text**: Extracts text content from PDF files
-6. **Generate Summary**: Uses LLM to create structured JSON summaries
-7. **Save to Database**: Persists paper info and summary to PostgreSQL
-8. **Generate Report**: Creates comprehensive Markdown report
-9. **Upload to MinIO**: Stores the report in MinIO with organized structure (summaries/YYYY/MM/)
-10. **Clean Up**: Respects rate limits between paper processing (5 second delay)
+3. **Filter Duplicates**: Skips papers that already have summaries in the database
+4. **Extract Text**: Extracts text content from PDF files (first 10 pages)
+5. **Parallel Summarization**: Dispatches parallel workers (max 5 per batch) to summarize papers via NVIDIA NIM
+6. **Quality Gate**: Validates summaries for completeness and minimum content requirements
+7. **Retry Failed**: Re-attempts failed summaries with higher temperature (up to 2 retries)
+8. **Save to Database**: Persists paper info and summary to PostgreSQL
+9. **Generate Report**: Creates comprehensive Markdown report
+10. **Upload to MinIO**: Stores the report in MinIO with organized structure (summaries/YYYY/MM/)
+11. **Clean Up**: Deletes temporary PDF files and removes empty directories
 
 ## 📝 Environment Variables Reference
 
@@ -347,7 +367,11 @@ All models use LangChain with Pydantic structured output to ensure reliable JSON
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `GOOGLE_API_KEY` | Yes | Google Gemini API key | `AIza...` |
+| `NVIDIA_API_KEY` | Yes | NVIDIA NIM API key | `nvapi-...` |
+| `NVIDIA_BASE_URL` | No | NVIDIA NIM endpoint | `https://integrate.api.nvidia.com/v1` |
+| `LLM_MODEL` | No | Default LLM model | `google/gemma-4-31b-it` |
+| `MAX_PAPERS_PER_BATCH` | No | Concurrent paper limit (respects 40 RPM) | `5` |
+| `SUMMARY_MAX_RETRIES` | No | Max retry attempts for failed summaries | `2` |
 | `MINIO_ACCESS_KEY` | Yes | MinIO access key | `minioadmin` |
 | `MINIO_SECRET_KEY` | Yes | MinIO secret key | `minioadmin` |
 | `MINIO_ENDPOINT` | No | MinIO server endpoint (default: localhost:9000) | `localhost:9000` |
@@ -413,6 +437,16 @@ For detailed documentation, see [wiki_sync_service/README.md](wiki_sync_service/
 - Verify the date format is correct (YYYY-MM-DD)
 - Try a different date to confirm API is working
 - Ensure Hugging Face API is accessible
+
+### Issue: "NVIDIA_API_KEY not found"
+- Ensure `.env` file exists in the project root
+- Verify `NVIDIA_API_KEY` is set with a valid key from build.nvidia.com
+- Check that the file is named `.env` (not `.env.copy`)
+
+### Issue: "Rate limit exceeded" or "429 error"
+- Reduce `MAX_PAPERS_PER_BATCH` in your `.env` file
+- Check your NVIDIA NIM tier limits at build.nvidia.com
+- The tool automatically retries with exponential backoff
 
 ### Issue: "Permission denied" or "403 error"
 - Verify API keys are correct
