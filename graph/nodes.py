@@ -78,8 +78,10 @@ def filter_duplicates_node(state: DigestState) -> dict:
     # Edge case: all papers are duplicates -> load existing summaries from DB
     if not new_papers_only and papers_to_process:
         logger.info("All papers are duplicates. Loading existing summaries from DB.")
-        date_str = state["date_str"]
-        existing = get_papers_with_summaries(engine, date_str=date_str)
+        # Load all papers with summaries and filter to only those in the current fetch list
+        all_existing = get_papers_with_summaries(engine)
+        fetched_ids = {p["id"] for p in papers_to_process}
+        existing = [e for e in all_existing if e.get("paper", {}).get("id") in fetched_ids]
         logger.info(f"Loaded {len(existing)} existing summaries from DB")
         return {
             "papers_to_process": [],
@@ -244,6 +246,9 @@ def save_to_db_node(state: DigestState) -> dict:
         except Exception as e:
             logger.error(f"Failed to save summary for {paper.get('id')}: {e}")
             continue
+        finally:
+            # Clean up private field after use
+            paper.pop("_text_length", None)
 
     logger.info(f"Saved {saved_count} summaries to database")
     return {}
@@ -378,6 +383,7 @@ def retry_failed_node(state: DigestState) -> dict:
             if local_path and os.path.exists(local_path):
                 text = extract_text_from_pdf(local_path)
                 paper["_extracted_text"] = text
+                paper["_text_length"] = len(text)
         if not text:
             still_failed.append(paper)
             continue

@@ -2,9 +2,12 @@ import os
 import sys
 import pypdf
 import json
+import logging
 from typing import List
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
+
+logger = logging.getLogger(__name__)
 
 # Add parent directory to path for importing llm_provider
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -111,7 +114,7 @@ Please provide a structured summary following the schema.""")
         return result.model_dump()
         
     except Exception as e:
-        print(f"Error summarizing paper {paper_info['id']}: {e}")
+        logger.error(f"Error summarizing paper {paper_info['id']}: {e}")
         return None
 
 
@@ -125,7 +128,7 @@ def extract_text_from_pdf(pdf_path, max_pages=10):
             for i in range(num_pages):
                 text += reader.pages[i].extract_text() + "\n"
     except Exception as e:
-        print(f"Error extracting text from {pdf_path}: {e}")
+        logger.error(f"Error extracting text from {pdf_path}: {e}")
     return text
 
 
