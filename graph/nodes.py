@@ -29,6 +29,10 @@ def fetch_papers_node(state: DigestState) -> dict:
     """Fetch papers from Hugging Face API for the given date."""
     date_str = state["date_str"]
     papers = fetch_daily_papers(date_str)
+    limit = state.get("paper_limit", 0)
+    if limit > 0:
+        papers = papers[:limit]
+        logger.info(f"Limit enabled: processing first {limit} papers only")
     logger.info(f"Fetched {len(papers)} papers for {date_str}")
     if not papers:
         logger.warning(f"No papers found for {date_str}")

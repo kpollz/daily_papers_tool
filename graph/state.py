@@ -16,3 +16,4 @@ class DigestState(TypedDict):
     report_path: str
     model_name: str
     retry_count: int
+    paper_limit: int

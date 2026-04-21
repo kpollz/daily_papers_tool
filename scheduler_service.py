@@ -141,6 +141,12 @@ if __name__ == "__main__":
         type=str,
         help="Specific date to process (YYYY-MM-DD). Only used with --run-now"
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Limit number of papers to process (default: 0 = all)"
+    )
     
     args = parser.parse_args()
     
@@ -153,7 +159,7 @@ if __name__ == "__main__":
         logger.info("Running in test mode (run once)")
         if args.date:
             logger.info(f"Processing specific date: {args.date}")
-            run_daily_digest(args.date, model=os.getenv('LLM_MODEL', 'google/gemma-4-31b-it'))
+            run_daily_digest(args.date, model=os.getenv('LLM_MODEL', 'google/gemma-4-31b-it'), paper_limit=args.limit)
         else:
             run_scheduled_job(model=os.getenv('LLM_MODEL', 'google/gemma-4-31b-it'))
     else:

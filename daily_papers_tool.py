@@ -77,7 +77,7 @@ def generate_markdown_report(summaries, date_str, model_name):
         
     return report
 
-def run_daily_digest(date_str, model="google/gemma-4-31b-it"):
+def run_daily_digest(date_str, model="google/gemma-4-31b-it", paper_limit=0):
     """Main function to run the daily paper digest process via LangGraph."""
     print(f"--- Starting Daily Paper Digest for {date_str} using {model} ---")
     
@@ -98,6 +98,7 @@ def run_daily_digest(date_str, model="google/gemma-4-31b-it"):
         "final_report": "",
         "report_path": "",
         "retry_count": 0,
+        "paper_limit": paper_limit,
     })
     
     report_path = result.get("report_path")
@@ -112,6 +113,8 @@ if __name__ == "__main__":
     parser.add_argument("--date", type=str, help="Date in YYYY-MM-DD format", default=datetime.now().strftime("%Y-%m-%d"))
     parser.add_argument("--model", type=str, default="google/gemma-4-31b-it",
                         help="LLM model ID for NVIDIA NIM (default: google/gemma-4-31b-it)")
+    parser.add_argument("--limit", type=int, default=0,
+                        help="Limit number of papers to process (default: 0 = all)")
     
     args = parser.parse_args()
-    run_daily_digest(args.date, model=args.model)
+    run_daily_digest(args.date, model=args.model, paper_limit=args.limit)
