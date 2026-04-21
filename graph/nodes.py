@@ -66,7 +66,7 @@ def filter_duplicates_node(state: DigestState) -> dict:
     new_papers_only = []
 
     for paper in papers_to_process:
-        paper_exists, summary_exists = check_paper_exists(paper["id"], engine)
+        _paper_exists, summary_exists = check_paper_exists(paper["id"], engine)
         if summary_exists:
             logger.info(f"Paper {paper['id']} already summarized. Skipping.")
             continue

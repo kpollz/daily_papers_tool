@@ -2,7 +2,7 @@ import os
 import sys
 import pypdf
 import json
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -129,7 +129,7 @@ def extract_text_from_pdf(pdf_path, max_pages=10):
     return text
 
 
-def generate_markdown_from_summary(summary_json, paper_info):
+def generate_markdown_from_summary(summary_json, _paper_info):
     """
     Generates markdown content from structured JSON summary.
     This is used for backward compatibility with the report generation.

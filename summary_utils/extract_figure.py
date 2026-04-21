@@ -1,7 +1,6 @@
 import os
 import re
 import tarfile
-import subprocess
 import shutil
 import requests
 import fitz  # PyMuPDF

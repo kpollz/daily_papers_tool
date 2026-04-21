@@ -1,5 +1,4 @@
 import requests
-from datetime import datetime
 
 
 def fetch_daily_papers(date_str=None, min_upvotes: int = 10):

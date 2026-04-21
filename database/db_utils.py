@@ -3,8 +3,6 @@ Database utility functions for saving and retrieving paper summaries (PostgreSQL
 """
 from datetime import datetime
 from .models import init_db, get_session, Paper, PaperSummary, DigestReport
-from summary_utils.summarize_papers import generate_markdown_from_summary
-
 # Initialize database engine (lazy initialization)
 _engine = None
 
@@ -139,50 +137,6 @@ def get_papers_with_summaries(engine, date_str=None):
     except Exception as e:
         print(f"Error retrieving papers with summaries: {e}")
         return []
-    finally:
-        session.close()
-
-def save_digest_report(date_str, report_path, minio_object_name, paper_count, model_used, engine):
-    """
-    Save digest report metadata to the database.
-    Returns the created DigestReport object.
-    """
-    session = get_session(engine)
-    
-    try:
-        report = DigestReport(
-            date_str=date_str,
-            report_path=report_path,
-            minio_object_name=minio_object_name,
-            paper_count=paper_count,
-            model_used=model_used
-        )
-        session.add(report)
-        session.commit()
-        session.refresh(report)
-        print(f"Saved digest report for {date_str}")
-        return report
-        
-    except Exception as e:
-        session.rollback()
-        print(f"Error saving digest report: {e}")
-        raise
-    finally:
-        session.close()
-
-def get_summary_by_paper_id(paper_id, engine):
-    """
-    Get a paper summary by its ID.
-    Returns the PaperSummary object or None.
-    """
-    session = get_session(engine)
-    
-    try:
-        summary = session.query(PaperSummary).filter_by(paper_id=paper_id).first()
-        return summary
-    except Exception as e:
-        print(f"Error retrieving summary for paper {paper_id}: {e}")
-        return None
     finally:
         session.close()
 
