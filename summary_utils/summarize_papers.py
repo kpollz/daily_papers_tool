@@ -1,10 +1,14 @@
 import os
+import sys
 import pypdf
 import json
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
+
+# Add parent directory to path for importing llm_provider
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from llm_provider import get_llm
 
 # Define Pydantic models for structured output
 class PaperSummary(BaseModel):
@@ -32,21 +36,15 @@ class PaperSummary(BaseModel):
     )
 
 
-def get_llm(model="gemini-2.0-flash"):
-    """
-    Initialize LangChain LLM with Google Generative AI.
-    """
-    llm = ChatGoogleGenerativeAI(
-        model=model,
-        temperature=0.7,
-    )
-    return llm
-
-
-def summarize_paper(paper_info, text, model="gemini-2.0-flash"):
+def summarize_paper(paper_info, text, llm_instance=None):
     """
     Summarizes a paper using LLM based on the extracted text.
     Returns structured JSON data using LangChain with Pydantic model.
+    
+    Args:
+        paper_info: Dictionary with paper metadata (id, title, etc.)
+        text: Extracted text from PDF
+        llm_instance: Pre-configured LLM instance (if None, creates one via get_llm())
     """
     # Create the prompt template
     prompt_template = ChatPromptTemplate.from_messages([
@@ -92,7 +90,7 @@ Please provide a structured summary following the schema.""")
     
     try:
         # Initialize LLM
-        llm = get_llm(model)
+        llm = llm_instance if llm_instance is not None else get_llm()
         
         # Create structured output chain with Pydantic model
         structured_llm = llm.with_structured_output(PaperSummary)
@@ -113,7 +111,7 @@ Please provide a structured summary following the schema.""")
         return result.model_dump()
         
     except Exception as e:
-        print(f"Error summarizing paper {paper_info['id']} with {model}: {e}")
+        print(f"Error summarizing paper {paper_info['id']}: {e}")
         return None
 
 

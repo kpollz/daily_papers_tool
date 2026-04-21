@@ -199,8 +199,8 @@ def run_daily_digest(date_str, model="gemini-2.0-flash"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Hugging Face Daily Paper Digest Tool")
     parser.add_argument("--date", type=str, help="Date in YYYY-MM-DD format", default=datetime.now().strftime("%Y-%m-%d"))
-    parser.add_argument("--model", type=str, choices=["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"], default="gemini-2.0-flash", 
-                        help="LLM model to use for summarization")
+    parser.add_argument("--model", type=str, default="google/gemma-4-31b-it",
+                        help="LLM model ID for NVIDIA NIM (default: google/gemma-4-31b-it)")
     
     args = parser.parse_args()
     run_daily_digest(args.date, model=args.model)

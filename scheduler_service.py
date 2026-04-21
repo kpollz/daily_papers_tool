@@ -51,7 +51,7 @@ def get_previous_day_date():
     return date_str
 
 
-def run_scheduled_job(model="gemini-2.5-flash"):
+def run_scheduled_job(model="google/gemma-4-31b-it"):
     """
     Chạy job crawl papers cho ngày hôm trước
     """
@@ -84,7 +84,7 @@ def main():
     Schedule job chạy vào 12:00 trưa giờ VN mỗi ngày
     """
     # Get model from environment or use default
-    model = os.getenv('LLM_MODEL', 'gemini-2.5-flash')
+    model = os.getenv('LLM_MODEL', 'google/gemma-4-31b-it')
     
     logger.info("Starting Daily Papers Scheduler Service")
     logger.info(f"Using model: {model}")
@@ -133,8 +133,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model", 
         type=str, 
-        choices=["gemini-2.5-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
-        help="LLM model to use (overrides env variable)"
+        default="google/gemma-4-31b-it",
+        help="LLM model ID for NVIDIA NIM (overrides env variable, default: google/gemma-4-31b-it)"
     )
     parser.add_argument(
         "--date",
@@ -153,9 +153,9 @@ if __name__ == "__main__":
         logger.info("Running in test mode (run once)")
         if args.date:
             logger.info(f"Processing specific date: {args.date}")
-            run_daily_digest(args.date, model=os.getenv('LLM_MODEL', 'gemini-2.5-flash'))
+            run_daily_digest(args.date, model=os.getenv('LLM_MODEL', 'google/gemma-4-31b-it'))
         else:
-            run_scheduled_job(model=os.getenv('LLM_MODEL', 'gemini-2.5-flash'))
+            run_scheduled_job(model=os.getenv('LLM_MODEL', 'google/gemma-4-31b-it'))
     else:
         # Run as scheduler service
         main()

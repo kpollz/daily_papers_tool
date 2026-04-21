@@ -1,15 +1,17 @@
+<!-- From: /home/aiteam-linux/gnust/daily_papers_tool/AGENTS.md -->
 # Daily Papers Tool - Agent Guide
 
 This document provides essential information for AI coding agents working on the Daily Papers Tool project.
 
 ## Project Overview
 
-**Daily Papers Tool** is an automated Python application that fetches, downloads, summarizes, and manages daily trending AI/ML papers from Hugging Face. It uses LLM-powered summarization (Google Gemini) and stores data in PostgreSQL with MinIO object storage integration.
+**Daily Papers Tool** is an automated Python application that fetches, downloads, summarizes, and manages daily trending AI/ML papers from Hugging Face. It uses LLM-powered summarization via **NVIDIA NIM (OpenAI-compatible)** with **LangGraph** orchestration, and stores data in PostgreSQL with MinIO object storage integration.
 
 ### Key Features
 - Fetches trending papers from Hugging Face API (filtered by upvotes ≥ 10)
 - Downloads PDFs from ArXiv
-- Generates structured summaries using LangChain + Google Gemini
+- Generates structured summaries using LangGraph + LangChain + NVIDIA NIM
+- Parallel summarization workers with quality gates and retry logic
 - Persists data in PostgreSQL database
 - Uploads markdown reports to MinIO object storage
 - Includes optional Wiki.js sync service
@@ -20,7 +22,8 @@ This document provides essential information for AI coding agents working on the
 |----------|------------|
 | **Language** | Python 3.8+ |
 | **Web Framework** | FastAPI, Uvicorn |
-| **LLM Framework** | LangChain with Google Generative AI |
+| **LLM Framework** | LangChain with NVIDIA NIM (OpenAI-compatible) |
+| **Graph Orchestration** | LangGraph |
 | **Data Validation** | Pydantic v2 |
 | **Database** | PostgreSQL + SQLAlchemy ORM |
 | **Object Storage** | MinIO |
@@ -32,8 +35,9 @@ This document provides essential information for AI coding agents working on the
 
 ```
 daily_papers_tool/
-├── daily_papers_tool.py          # Main orchestration script (entry point)
+├── daily_papers_tool.py          # Main orchestration script (LangGraph entry point)
 ├── scheduler_service.py          # Cron-like scheduler service
+├── llm_provider.py               # LLM factory for NVIDIA NIM
 ├── requirements.txt              # Python dependencies
 ├── .env                          # Environment variables (gitignored)
 ├── .env.copy                     # Environment template
@@ -44,6 +48,12 @@ daily_papers_tool/
 ├── docker-compose.yml            # Docker Compose configuration
 ├── .dockerignore                 # Docker ignore rules
 ├── logs/                         # Scheduler logs (gitignored)
+│
+├── graph/                        # LangGraph workflow package
+│   ├── __init__.py
+│   ├── state.py                  # DigestState TypedDict schema
+│   ├── nodes.py                  # All graph nodes (fetch, download, summarize, etc.)
+│   └── builder.py                # Graph wiring & conditional edges
 │
 ├── database/                     # Database layer
 │   ├── __init__.py
@@ -92,22 +102,22 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.copy .env
-# Edit .env with your credentials
+# Edit .env with your credentials (user-managed, do not read)
 ```
 
 ### Run Main Application
 ```bash
-# Run with defaults (today's date, gemini-2.0-flash model)
+# Run with defaults (today's date, google/gemma-4-31b-it model)
 python daily_papers_tool.py
 
 # Run for specific date
 python daily_papers_tool.py --date 2026-01-02
 
-# Run with specific model
-python daily_papers_tool.py --model gemini-2.5-flash
+# Run with specific NVIDIA NIM model
+python daily_papers_tool.py --model google/gemma-4-31b-it
 
 # Full example
-python daily_papers_tool.py --date 2026-01-02 --model gemini-2.5-pro
+python daily_papers_tool.py --date 2026-01-02 --model google/gemma-4-31b-it
 ```
 
 ### Run Scheduler Service
@@ -121,7 +131,7 @@ python scheduler_service.py
 python scheduler_service.py --run-now
 
 # Run with specific model
-python scheduler_service.py --run-now --model gemini-2.5-flash
+python scheduler_service.py --run-now --model google/gemma-4-31b-it
 
 # Run specific date (testing only)
 python scheduler_service.py --run-now --date 2026-01-02
@@ -172,7 +182,8 @@ Create a `.env` file in the project root with these variables:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GOOGLE_API_KEY` | Yes | Google Gemini API key |
+| `NVIDIA_API_KEY` | Yes | NVIDIA NIM API key from build.nvidia.com |
+| `NVIDIA_BASE_URL` | No | NVIDIA NIM endpoint (default: `https://integrate.api.nvidia.com/v1`) |
 | `DATABASE_URL` | Yes | PostgreSQL connection string (e.g., `postgresql://user:pass@localhost:5432/db`) |
 | `MINIO_ACCESS_KEY` | Yes | MinIO access key |
 | `MINIO_SECRET_KEY` | Yes | MinIO secret key |
@@ -180,10 +191,12 @@ Create a `.env` file in the project root with these variables:
 | `MINIO_BUCKET` | No | MinIO bucket name (default: `daily-papers`) |
 | `MINIO_SECURE` | No | Use HTTPS (default: `false`) |
 | `API_PASSWORD` | No | Password for future API endpoints |
-| `LLM_MODEL` | No | Default model for scheduler (default: `gemini-2.0-flash`) |
+| `LLM_MODEL` | No | Default model for scheduler (default: `google/gemma-4-31b-it`) |
+| `MAX_PAPERS_PER_BATCH` | No | Limit concurrent papers to respect 40 RPM (default: `5`) |
+| `SUMMARY_MAX_RETRIES` | No | Max retry attempts for failed summaries (default: `2`) |
 | `RUN_ON_STARTUP` | No | Run job immediately on scheduler startup (default: `false`) |
 
-**Note:** The `.env.copy` file serves as a template with empty values. Never commit `.env` files with real credentials.
+**Note:** The `.env.copy` file serves as a template with empty values. Never commit `.env` files with real credentials. The user manages `.env` contents directly — do not read or inspect the `.env` file.
 
 ## Code Style Guidelines
 
@@ -212,6 +225,8 @@ from database.db_utils import save_paper_and_summary
 - Add `sys.path.append(os.path.dirname(os.path.abspath(__file__)))` for local imports
 - Use Pydantic models for structured LLM output (see `summary_utils/summarize_papers.py`)
 - Database sessions should use try/except/finally pattern with proper cleanup
+- LangGraph nodes receive `state: DigestState` and return `dict` of state updates
+- Use `operator.add` reducer for parallel-accumulated list fields in graph state
 
 ### Function Documentation
 ```python
@@ -259,13 +274,109 @@ def function_name(param1, param2):
 - `model_used` (String)
 - `created_at` (DateTime)
 
+## LangGraph Workflow Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Entry Point: daily_papers_tool.py                                       │
+│  - Builds graph via build_digest_graph()                                 │
+│  - Invokes with {"date_str": ..., "model_name": ...}                     │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 1: Fetch Papers (fetch_papers_node)                               │
+│  - Call Hugging Face API                                                 │
+│  - Filter by upvotes (min 10)                                            │
+│  - Conditional: if empty → skip to generate_report                       │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 2: Download PDFs (download_pdfs_node)                             │
+│  - Download from ArXiv                                                   │
+│  - Filter to only successfully downloaded papers                         │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 3: Filter Duplicates (filter_duplicates_node)                     │
+│  - Skip papers already summarized in DB                                  │
+│  - If all duplicates: load existing summaries, skip to generate_report   │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 4: Extract Text (extract_text_node)                               │
+│  - Extract text from PDF (first 10 pages)                                │
+│  - Skip papers with empty text extraction                                │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 5: Parallel Summarization (dispatch → summarize_worker_node)      │
+│  - Map: dispatch_summarization sends one worker per paper via Send       │
+│  - Each worker: get LLM → summarize_paper() → return summary             │
+│  - 1-second stagger between workers for rate limiting                    │
+│  - Exponential backoff retry on 429/500 errors (max 3 attempts)          │
+│  - Reduce: operator.add accumulates into state["summaries"]              │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 6: Quality Gate (quality_gate_node)                               │
+│  - Validate summary has all required fields                              │
+│  - Validate main_problem ≥ 20 chars, tags non-empty                      │
+│  - Failed papers moved to state["failed_papers"]                         │
+│  - Conditional: if failed_papers > 0 and retries < max → retry loop      │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 7: Retry Failed (retry_failed_node)                               │
+│  - Re-run summarization with higher temperature (0.9)                    │
+│  - Loop back to quality_gate                                             │
+│  - Increment retry_count                                                 │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 8: Save to DB (save_to_db_node)                                   │
+│  - Call save_paper_and_summary() for each valid summary                  │
+│  - Continue on individual failures (don't crash)                         │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 9: Generate Report (generate_report_node)                         │
+│  - Build Markdown digest from summaries                                  │
+│  - Include existing DB summaries if no new papers processed              │
+│  - Save to summaries/YYYY/MM/daily_digest_YYYY-MM-DD.md                  │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 10: Upload to MinIO (upload_minio_node)                           │
+│  - Upload to summaries/YYYY/MM/ path                                     │
+│  - Log warning on failure (don't crash workflow)                         │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Phase 11: Cleanup (cleanup_node)                                        │
+│  - Delete temporary PDF files                                            │
+│  - Remove empty parent directories                                       │
+│  - END                                                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 ## Testing Strategy
 
 **Current State:** The project does not have formal unit tests. Testing is done manually:
 
 1. **Manual Testing:** Run with specific dates and verify output
    ```bash
-   python daily_papers_tool.py --date 2026-01-02 --model gemini-2.0-flash
+   python daily_papers_tool.py --date 2026-01-02 --model google/gemma-4-31b-it
    ```
 
 2. **Scheduler Testing:**
@@ -273,73 +384,38 @@ def function_name(param1, param2):
    python scheduler_service.py --run-now --date 2026-01-02
    ```
 
-3. **Database Verification:** Check PostgreSQL tables after run
+3. **Graph Compilation Test:**
+   ```bash
+   python -c "from graph import build_digest_graph; g = build_digest_graph(); print(type(g))"
+   ```
 
-4. **MinIO Verification:** Check uploaded files in MinIO bucket
+4. **LLM Provider Test:**
+   ```bash
+   python -c "from llm_provider import get_llm; llm = get_llm(); print(type(llm))"
+   ```
 
-5. **Logging:** Check `scheduler.log` for scheduler activity
+5. **Database Verification:** Check PostgreSQL tables after run
+
+6. **MinIO Verification:** Check uploaded files in MinIO bucket
+
+7. **Logging:** Check `scheduler.log` for scheduler activity
 
 ## Security Considerations
 
 1. **API Keys:** Never commit `.env` files or hardcode API keys
 2. **Database URLs:** Passwords with special characters (`@`, `:`) are URL-encoded in `database/models.py`
-3. **Rate Limiting:** 5-second delays between paper processing to respect ArXiv
+3. **Rate Limiting:** 1-second stagger between parallel workers; 5-paper batch limit for NVIDIA NIM 40 RPM
 4. **File Cleanup:** PDF files are deleted after successful processing
 5. **Docker:** Wiki sync service uses environment files, not baked-in credentials
-
-## Workflow Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 1: Fetch Papers                                       │
-│  - Call Hugging Face API                                     │
-│  - Filter by upvotes (min 10)                                │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 2: Download PDFs                                      │
-│  - Download from ArXiv                                       │
-│  - Store in papers/YYYY-MM-DD/                               │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 3: Database Init & Duplicate Check                    │
-│  - Initialize SQLAlchemy engine                              │
-│  - Skip papers already in database                           │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 4: Summarize Papers                                   │
-│  - Extract text from PDF (first 10 pages)                    │
-│  - Generate structured summary via Gemini                    │
-│  - Save to database                                          │
-│  - Delete PDF after processing                               │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 5: Generate Report                                    │
-│  - Create Markdown digest                                    │
-│  - Save to summaries/YYYY/MM/                                │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 6: Upload to MinIO                                    │
-│  - Upload to summaries/YYYY/MM/ path                         │
-│  - Save metadata to database                                 │
-└─────────────────────────────────────────────────────────────┘
-```
 
 ## Common Tasks
 
 ### Adding a New LLM Model
-1. Update model choices in `daily_papers_tool.py` argument parser
-2. Update model choices in `scheduler_service.py` argument parser
-3. Test with the new model using `--model` flag
+1. Update `llm_provider.py` to support the new model ID if needed
+2. Update `daily_papers_tool.py` help text for `--model`
+3. Update `scheduler_service.py` help text for `--model`
+4. Test with the new model using `--model` flag
+5. Update `README.md` and `AGENTS.md` model references
 
 ### Modifying Database Schema
 1. Update `database/models.py` with new columns/models
@@ -354,10 +430,12 @@ def function_name(param1, param2):
 5. Update `save_paper_and_summary()` in `database/db_utils.py`
 
 ### Debugging Tips
-1. Enable SQLAlchemy echo: Change `echo=False` to `echo=True` in `database/models.py`
-2. Check scheduler logs: `tail -f scheduler.log`
-3. Test PDF extraction: Run `summary_utils/summarize_papers.py` directly
-4. Verify database connection: Check console output for connection errors
+1. **Enable SQLAlchemy echo:** Change `echo=False` to `echo=True` in `database/models.py`
+2. **Check scheduler logs:** `tail -f logs/scheduler.log`
+3. **Test PDF extraction:** Run `summary_utils/summarize_papers.py` directly
+4. **Verify database connection:** Check console output for connection errors
+5. **NVIDIA API issues:** Verify `NVIDIA_API_KEY` is set, check 429 rate limit errors in logs
+6. **Graph visualization:** Use `graph.get_graph().draw_mermaid()` to inspect workflow
 
 ## External Dependencies
 
@@ -365,7 +443,7 @@ def function_name(param1, param2):
 |---------|---------|-----------------|
 | Hugging Face | Fetch daily papers | `https://huggingface.co/api/daily_papers` |
 | ArXiv | Download PDFs | `https://arxiv.org/pdf/{id}.pdf` |
-| Google Gemini | LLM summarization | Via `langchain-google-genai` |
+| NVIDIA NIM | LLM summarization | `https://integrate.api.nvidia.com/v1` |
 | PostgreSQL | Data persistence | `postgresql://user:pass@host:port/db` |
 | MinIO | Object storage | `http(s)://endpoint:port` |
 | Wiki.js | Documentation (optional) | `https://wiki.example.com/graphql` |
