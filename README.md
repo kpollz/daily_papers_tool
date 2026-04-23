@@ -341,8 +341,7 @@ All models use LangGraph + LangChain with Pydantic structured output to ensure r
 
 The free tier of NVIDIA NIM allows **40 requests per minute (RPM)**. To stay safely within this limit:
 
-- **Batch size**: Default `MAX_PAPERS_PER_BATCH=5` ensures at most 5 parallel workers
-- **Stagger delay**: Each worker sleeps 1 second before calling the API
+- **Batch size**: Default `MAX_PAPERS_PER_BATCH=1` ensures at most 1 parallel worker
 - **Retry backoff**: On 429/500 errors, exponential backoff (2s, 4s, 8s) up to 3 attempts
 
 With these defaults, even 5 parallel papers only consume ~5 requests per minute, leaving plenty of headroom.

@@ -192,7 +192,7 @@ Create a `.env` file in the project root with these variables:
 | `MINIO_SECURE` | No | Use HTTPS (default: `false`) |
 | `API_PASSWORD` | No | Password for future API endpoints |
 | `LLM_MODEL` | No | Default model for scheduler (default: `google/gemma-4-31b-it`) |
-| `MAX_PAPERS_PER_BATCH` | No | Limit concurrent papers to respect 40 RPM (default: `5`) |
+| `MAX_PAPERS_PER_BATCH` | No | Limit concurrent papers to respect 40 RPM (default: `1`) |
 | `SUMMARY_MAX_RETRIES` | No | Max retry attempts for failed summaries (default: `2`) |
 | `RUN_ON_STARTUP` | No | Run job immediately on scheduler startup (default: `false`) |
 

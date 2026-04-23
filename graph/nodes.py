@@ -125,9 +125,6 @@ def summarize_worker_node(state: dict) -> dict:
         logger.error("summarize_worker_node received no paper in state")
         return {"failed_papers": []}
 
-    # Stagger parallel workers to avoid rate limit bursts
-    time.sleep(1)
-
     text = paper.get("_extracted_text", "")
     if not text:
         logger.warning(f"Paper {paper['id']}: no extracted text, marking as failed")
