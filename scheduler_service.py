@@ -92,7 +92,7 @@ def main():
     logger.info("Scheduled to run daily at 12:00 (noon) Vietnam time")
     
     # Schedule job at 12:00 noon Vietnam time
-    schedule.every().day.at("10:00").do(run_scheduled_job, model=model)
+    schedule.every().day.at("15:30").do(run_scheduled_job, model=model)
     
     # Log next run time
     next_run = schedule.next_run()
