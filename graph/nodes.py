@@ -62,6 +62,12 @@ def download_pdfs_node(state: DigestState) -> dict:
 def filter_duplicates_node(state: DigestState) -> dict:
     """Filter out papers that already have summaries in the database."""
     papers_to_process = state["papers_to_process"]
+
+    # Force update mode: re-process all papers, skip duplicate check
+    if state.get("force_update"):
+        print("Force update mode: re-processing all papers.")
+        return {"papers_to_process": papers_to_process}
+
     engine = get_engine()
     new_papers_only = []
     skipped_ids = set()

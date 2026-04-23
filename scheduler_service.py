@@ -51,7 +51,7 @@ def get_previous_day_date():
     return date_str
 
 
-def run_scheduled_job(model="google/gemma-4-31b-it"):
+def run_scheduled_job(model="moonshotai/kimi-k2.5", force_update=False):
     """
     Chạy job crawl papers cho ngày hôm trước
     """
@@ -63,7 +63,7 @@ def run_scheduled_job(model="google/gemma-4-31b-it"):
         date_str = get_previous_day_date()
         logger.info(f"Running digest for date: {date_str} with model: {model}")
         
-        result = run_daily_digest(date_str, model=model)
+        result = run_daily_digest(date_str, model=model, force_update=force_update)
         
         if result:
             logger.info(f"Job completed successfully. Report saved to: {result}")
@@ -84,7 +84,7 @@ def main():
     Schedule job chạy vào 12:00 trưa giờ VN mỗi ngày
     """
     # Get model from environment or use default
-    model = os.getenv('LLM_MODEL', 'google/gemma-4-31b-it')
+    model = os.getenv('LLM_MODEL', 'moonshotai/kimi-k2.5')
     
     logger.info("Starting Daily Papers Scheduler Service")
     logger.info(f"Using model: {model}")
@@ -131,10 +131,10 @@ if __name__ == "__main__":
         help="Run the job immediately (for testing)"
     )
     parser.add_argument(
-        "--model", 
-        type=str, 
-        default="google/gemma-4-31b-it",
-        help="LLM model ID for NVIDIA NIM (overrides env variable, default: google/gemma-4-31b-it)"
+        "--model",
+        type=str,
+        default="moonshotai/kimi-k2.5",
+        help="LLM model ID for NVIDIA NIM (overrides env variable, default: moonshotai/kimi-k2.5)"
     )
     parser.add_argument(
         "--date",
@@ -146,6 +146,11 @@ if __name__ == "__main__":
         type=int,
         default=0,
         help="Limit number of papers to process (default: 0 = all)"
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-summarize all papers and overwrite existing DB entries"
     )
     
     args = parser.parse_args()
@@ -159,9 +164,9 @@ if __name__ == "__main__":
         logger.info("Running in test mode (run once)")
         if args.date:
             logger.info(f"Processing specific date: {args.date}")
-            run_daily_digest(args.date, model=os.getenv('LLM_MODEL', 'google/gemma-4-31b-it'), paper_limit=args.limit)
+            run_daily_digest(args.date, model=os.getenv('LLM_MODEL', 'moonshotai/kimi-k2.5'), paper_limit=args.limit, force_update=args.force)
         else:
-            run_scheduled_job(model=os.getenv('LLM_MODEL', 'google/gemma-4-31b-it'))
+            run_scheduled_job(model=os.getenv('LLM_MODEL', 'moonshotai/kimi-k2.5'), force_update=args.force)
     else:
         # Run as scheduler service
         main()

@@ -132,7 +132,7 @@ Create a `.env` file in the project root with the following variables:
 ```env
 NVIDIA_API_KEY=""
 NVIDIA_BASE_URL="https://integrate.api.nvidia.com/v1"
-LLM_MODEL="google/gemma-4-31b-it"
+LLM_MODEL="moonshotai/kimi-k2.5"
 MAX_PAPERS_PER_BATCH=5
 SUMMARY_MAX_RETRIES=2
 MINIO_ACCESS_KEY=""
@@ -160,13 +160,13 @@ python daily_papers_tool.py --date 2026-01-02
 #### Using NVIDIA NIM Model
 
 ```bash
-python daily_papers_tool.py --model google/gemma-4-31b-it
+python daily_papers_tool.py --model moonshotai/kimi-k2.5
 ```
 
 #### Complete Example
 
 ```bash
-python daily_papers_tool.py --date 2026-01-02 --model google/gemma-4-31b-it
+python daily_papers_tool.py --date 2026-01-02 --model moonshotai/kimi-k2.5
 ```
 
 #### Command-Line Arguments
@@ -174,7 +174,7 @@ python daily_papers_tool.py --date 2026-01-02 --model google/gemma-4-31b-it
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
 | `--date` | string | Today's date | Date in YYYY-MM-DD format |
-| `--model` | string | google/gemma-4-31b-it | LLM model ID for NVIDIA NIM (e.g., google/gemma-4-31b-it) |
+| `--model` | string | moonshotai/kimi-k2.5 | LLM model ID for NVIDIA NIM (e.g., moonshotai/kimi-k2.5) |
 
 ## 🗄️ Database Schema
 
@@ -332,7 +332,7 @@ daily_papers_tool/
 ## 🔌 Supported Models
 
 ### NVIDIA NIM (via LangChain OpenAI-compatible)
-- **google/gemma-4-31b-it** (default) - Powerful open model hosted on NVIDIA NIM
+- **moonshotai/kimi-k2.5** (default) - Powerful open model hosted on NVIDIA NIM
 - Supports any model available on your NVIDIA NIM endpoint
 
 All models use LangGraph + LangChain with Pydantic structured output to ensure reliable JSON responses. Set the `NVIDIA_API_KEY` environment variable. Get your key at [build.nvidia.com](https://build.nvidia.com).
@@ -368,7 +368,7 @@ With these defaults, even 5 parallel papers only consume ~5 requests per minute,
 |----------|----------|-------------|---------|
 | `NVIDIA_API_KEY` | Yes | NVIDIA NIM API key | `nvapi-...` |
 | `NVIDIA_BASE_URL` | No | NVIDIA NIM endpoint | `https://integrate.api.nvidia.com/v1` |
-| `LLM_MODEL` | No | Default LLM model | `google/gemma-4-31b-it` |
+| `LLM_MODEL` | No | Default LLM model | `moonshotai/kimi-k2.5` |
 | `MAX_PAPERS_PER_BATCH` | No | Concurrent paper limit (respects 40 RPM) | `5` |
 | `SUMMARY_MAX_RETRIES` | No | Max retry attempts for failed summaries | `2` |
 | `MINIO_ACCESS_KEY` | Yes | MinIO access key | `minioadmin` |

@@ -29,7 +29,7 @@ def get_llm(model: str = None, temperature: float = 0.7) -> ChatOpenAI:
             "NVIDIA_API_KEY environment variable is required. Get one at build.nvidia.com"
         )
     
-    model_name = model or os.getenv("LLM_MODEL", "google/gemma-4-31b-it")
+    model_name = model or os.getenv("LLM_MODEL", "moonshotai/kimi-k2.5")
     base_url = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
     
     llm = ChatOpenAI(

@@ -107,17 +107,17 @@ cp .env.copy .env
 
 ### Run Main Application
 ```bash
-# Run with defaults (today's date, google/gemma-4-31b-it model)
+# Run with defaults (today's date, moonshotai/kimi-k2.5 model)
 python daily_papers_tool.py
 
 # Run for specific date
 python daily_papers_tool.py --date 2026-01-02
 
 # Run with specific NVIDIA NIM model
-python daily_papers_tool.py --model google/gemma-4-31b-it
+python daily_papers_tool.py --model moonshotai/kimi-k2.5
 
 # Full example
-python daily_papers_tool.py --date 2026-01-02 --model google/gemma-4-31b-it
+python daily_papers_tool.py --date 2026-01-02 --model moonshotai/kimi-k2.5
 ```
 
 ### Run Scheduler Service
@@ -131,7 +131,7 @@ python scheduler_service.py
 python scheduler_service.py --run-now
 
 # Run with specific model
-python scheduler_service.py --run-now --model google/gemma-4-31b-it
+python scheduler_service.py --run-now --model moonshotai/kimi-k2.5
 
 # Run specific date (testing only)
 python scheduler_service.py --run-now --date 2026-01-02
@@ -191,7 +191,7 @@ Create a `.env` file in the project root with these variables:
 | `MINIO_BUCKET` | No | MinIO bucket name (default: `daily-papers`) |
 | `MINIO_SECURE` | No | Use HTTPS (default: `false`) |
 | `API_PASSWORD` | No | Password for future API endpoints |
-| `LLM_MODEL` | No | Default model for scheduler (default: `google/gemma-4-31b-it`) |
+| `LLM_MODEL` | No | Default model for scheduler (default: `moonshotai/kimi-k2.5`) |
 | `MAX_PAPERS_PER_BATCH` | No | Limit concurrent papers to respect 40 RPM (default: `1`) |
 | `SUMMARY_MAX_RETRIES` | No | Max retry attempts for failed summaries (default: `2`) |
 | `RUN_ON_STARTUP` | No | Run job immediately on scheduler startup (default: `false`) |
@@ -376,7 +376,7 @@ def function_name(param1, param2):
 
 1. **Manual Testing:** Run with specific dates and verify output
    ```bash
-   python daily_papers_tool.py --date 2026-01-02 --model google/gemma-4-31b-it
+   python daily_papers_tool.py --date 2026-01-02 --model moonshotai/kimi-k2.5
    ```
 
 2. **Scheduler Testing:**

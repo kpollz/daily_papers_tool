@@ -40,3 +40,4 @@ class DigestState(TypedDict):
     model_name: str
     retry_count: int
     paper_limit: int
+    force_update: bool
