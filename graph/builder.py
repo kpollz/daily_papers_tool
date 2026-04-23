@@ -16,6 +16,7 @@ from graph.nodes import (
     filter_duplicates_node,
     extract_text_node,
     summarize_worker_node,
+    summarize_sequential_node,
     quality_gate_node,
     save_to_db_node,
     generate_report_node,
@@ -78,6 +79,7 @@ def build_digest_graph():
     workflow.add_node("filter_dup", filter_duplicates_node)
     workflow.add_node("extract", extract_text_node)
     workflow.add_node("summarize_worker", summarize_worker_node)
+    workflow.add_node("summarize_sequential", summarize_sequential_node)
     workflow.add_node("quality_gate", quality_gate_node)
     workflow.add_node("retry", retry_failed_node)
     workflow.add_node("save_db", save_to_db_node)
@@ -108,13 +110,20 @@ def build_digest_graph():
         },
     )
 
-    workflow.add_conditional_edges(
-        "extract",
-        dispatch_summarization,
-        ["summarize_worker"],
-    )
-
-    workflow.add_edge("summarize_worker", "quality_gate")
+    # Choose between sequential (batch=1) and parallel (batch>1) processing
+    batch_limit = int(os.getenv("MAX_PAPERS_PER_BATCH", 1))
+    if batch_limit <= 1:
+        # Sequential: process all papers one-by-one
+        workflow.add_edge("extract", "summarize_sequential")
+        workflow.add_edge("summarize_sequential", "quality_gate")
+    else:
+        # Parallel: dispatch multiple workers
+        workflow.add_conditional_edges(
+            "extract",
+            dispatch_summarization,
+            ["summarize_worker"],
+        )
+        workflow.add_edge("summarize_worker", "quality_gate")
 
     workflow.add_conditional_edges(
         "quality_gate",

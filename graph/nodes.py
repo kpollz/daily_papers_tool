@@ -32,10 +32,10 @@ def fetch_papers_node(state: DigestState) -> dict:
     limit = state.get("paper_limit", 0)
     if limit > 0:
         papers = papers[:limit]
-        logger.info(f"Limit enabled: processing first {limit} papers only")
-    logger.info(f"Fetched {len(papers)} papers for {date_str}")
+        print(f"Limit enabled: processing first {limit} papers only")
+    print(f"Fetched {len(papers)} papers for {date_str}")
     if not papers:
-        logger.warning(f"No papers found for {date_str}")
+        print(f"Warning: No papers found for {date_str}")
     return {"papers": papers}
 
 
@@ -167,6 +167,60 @@ def summarize_worker_node(state: dict) -> dict:
         # Keep _extracted_text for potential retry
         logger.warning(f"Paper {paper['id']}: summarization failed")
         return {"failed_papers": [paper]}
+
+
+def summarize_sequential_node(state: DigestState) -> dict:
+    """
+    Sequential summarization for all papers in papers_to_process.
+    Used when MAX_PAPERS_PER_BATCH=1 to process papers one-by-one
+    instead of dispatching parallel workers that would drop the rest.
+    """
+    papers_to_process = state.get("papers_to_process", [])
+    if not papers_to_process:
+        return {"summaries": [], "failed_papers": []}
+
+    llm = get_llm()
+    summaries = []
+    failed_papers = []
+
+    print(f"Processing {len(papers_to_process)} papers sequentially...")
+
+    for paper in papers_to_process:
+        paper_id = paper.get("id", "unknown")
+        text = paper.get("_extracted_text", "")
+
+        if not text:
+            print(f"Paper {paper_id}: no extracted text, skipping")
+            failed_papers.append(paper)
+            continue
+
+        result = None
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                result = summarize_paper(paper, text, llm_instance=llm)
+                if result:
+                    break
+            except Exception as e:
+                error_type = type(e).__name__
+                print(f"Paper {paper_id}: attempt {attempt}/{max_attempts} failed ({error_type}): {e}")
+                if attempt < max_attempts:
+                    wait_time = 2 ** (attempt - 1)
+                    print(f"Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"Paper {paper_id}: all {max_attempts} attempts exhausted")
+
+        if result:
+            paper.pop("_extracted_text", None)
+            summaries.append({"paper": paper, "summary": result})
+            print(f"Paper {paper_id}: summarization succeeded")
+        else:
+            failed_papers.append(paper)
+            print(f"Paper {paper_id}: summarization failed")
+
+    print(f"Sequential processing complete: {len(summaries)} succeeded, {len(failed_papers)} failed")
+    return {"summaries": summaries, "failed_papers": failed_papers}
 
 
 def quality_gate_node(state: DigestState) -> dict:
@@ -345,18 +399,18 @@ def cleanup_node(state: DigestState) -> dict:
                 deleted_count += 1
                 dirs_to_check.add(os.path.dirname(local_path))
             except Exception as e:
-                logger.warning(f"Failed to delete {local_path}: {e}")
+                print(f"Failed to delete {local_path}: {e}")
 
     # Remove empty parent directories
     for directory in dirs_to_check:
         try:
             if os.path.isdir(directory) and not os.listdir(directory):
                 os.rmdir(directory)
-                logger.info(f"Removed empty directory: {directory}")
+                print(f"Removed empty directory: {directory}")
         except Exception as e:
-            logger.warning(f"Failed to remove directory {directory}: {e}")
+            print(f"Failed to remove directory {directory}: {e}")
 
-    logger.info(f"Cleaned up {deleted_count} temporary PDF files")
+    print(f"Cleaned up {deleted_count} temporary PDF files")
     return {}
 
 
