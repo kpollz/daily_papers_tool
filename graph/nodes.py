@@ -64,31 +64,55 @@ def filter_duplicates_node(state: DigestState) -> dict:
     papers_to_process = state["papers_to_process"]
     engine = get_engine()
     new_papers_only = []
+    skipped_ids = set()
 
     for paper in papers_to_process:
         _paper_exists, summary_exists = check_paper_exists(paper["id"], engine)
         if summary_exists:
             print(f"Paper {paper['id']} already summarized. Skipping.")
+            skipped_ids.add(paper["id"])
             continue
         # Keep if no summary (regardless of whether paper record exists)
         new_papers_only.append(paper)
 
-    print(f"After duplicate check: {len(new_papers_only)} papers to process")
+    print(f"After duplicate check: {len(new_papers_only)} new papers to process")
 
-    # Edge case: all papers are duplicates -> load existing summaries from DB
-    if not new_papers_only and papers_to_process:
-        print("All papers are duplicates. Loading existing summaries from DB.")
-        # Load all papers with summaries and filter to only those in the current fetch list
+    # Load existing summaries for skipped papers to include in report
+    existing_summaries = []
+    if skipped_ids:
         all_existing = get_papers_with_summaries(engine)
-        fetched_ids = {p["id"] for p in papers_to_process}
-        existing = [e for e in all_existing if e.get("paper", {}).get("id") in fetched_ids]
-        print(f"Loaded {len(existing)} existing summaries from DB")
+        for e in all_existing:
+            paper_id = e.get("paper", {}).get("id")
+            if paper_id in skipped_ids:
+                summary_obj = e.get("summary")
+                if summary_obj:
+                    # Convert SQLAlchemy model to dict for report generation
+                    existing_summaries.append({
+                        "paper": e["paper"],
+                        "summary": {
+                            "tags": summary_obj.tags,
+                            "main_problem": summary_obj.main_problem,
+                            "main_idea": summary_obj.main_idea,
+                            "main_results": summary_obj.main_results,
+                            "conclusion_future_works": summary_obj.conclusion_future_works,
+                            "publish_papers": summary_obj.publish_papers,
+                            "patent_ideas": summary_obj.patent_ideas,
+                        }
+                    })
+        print(f"Loaded {len(existing_summaries)} existing summaries for report")
+
+    # Edge case: all papers are duplicates
+    if not new_papers_only:
+        print("All papers are duplicates. Generating report from existing data.")
         return {
             "papers_to_process": [],
-            "summaries": existing,
+            "summaries": existing_summaries,
         }
 
-    return {"papers_to_process": new_papers_only}
+    return {
+        "papers_to_process": new_papers_only,
+        "summaries": existing_summaries,
+    }
 
 
 def extract_text_node(state: DigestState) -> dict:
