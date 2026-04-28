@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import pypdf
 import json
 import logging
@@ -8,6 +9,26 @@ from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 
 logger = logging.getLogger(__name__)
+
+# Control chars 0x00-0x1F except normal whitespace (0x20)
+_CONTROL_CHAR_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+
+
+def _sanitize_text(text: str) -> str:
+    """Remove control characters that corrupt LaTeX (e.g. \\r in \\rightarrow)."""
+    if not isinstance(text, str):
+        return text
+    return _CONTROL_CHAR_RE.sub('', text).replace('\r\n', '\n').replace('\r', '')
+
+
+def _sanitize_summary(summary: dict) -> dict:
+    """Clean all string fields in a summary dict."""
+    for key, value in summary.items():
+        if isinstance(value, str):
+            summary[key] = _sanitize_text(value)
+        elif isinstance(value, list):
+            summary[key] = [_sanitize_text(v) if isinstance(v, str) else v for v in value]
+    return summary
 
 # Add parent directory to path for importing llm_provider
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -111,7 +132,7 @@ Please provide a structured summary following the schema.""")
         })
         
         # Convert Pydantic model to dict for backward compatibility
-        return result.model_dump()
+        return _sanitize_summary(result.model_dump())
         
     except Exception as e:
         logger.error(f"Error summarizing paper {paper_info['id']}: {e}")
@@ -139,6 +160,9 @@ def generate_markdown_from_summary(summary_json, _paper_info):
     """
     if not summary_json:
         return "Summary generation failed."
+
+    # Sanitize in case summary came from DB with control chars
+    summary_json = _sanitize_summary(summary_json)
     
     markdown = f"""
 **Tag:** {', '.join(summary_json.get('tags', []))}
