@@ -39,7 +39,10 @@ def run_daily_digest(date_str, model="moonshotai/kimi-k2.5", paper_limit=0, forc
     result = graph.invoke(_make_initial_state(date_str, model, paper_limit, force_update))
     
     report_path = result.get("report_path")
-    if report_path:
+    if not result.get("papers"):
+        print(f"--- Skipping {date_str}: No papers found. ---")
+        return None
+    elif report_path:
         print(f"--- Digest Complete. Report saved to {report_path} ---")
     else:
         print("--- Digest Complete. No report generated. ---")

@@ -68,7 +68,7 @@ def run_scheduled_job(model="moonshotai/kimi-k2.5", force_update=False):
         if result:
             logger.info(f"Job completed successfully. Report saved to: {result}")
         else:
-            logger.warning("Job completed but no report generated (possibly no papers found)")
+            logger.info(f"No papers found for {date_str}. Skipped this day.")
             
     except Exception as e:
         logger.error(f"Error in scheduled job: {e}", exc_info=True)

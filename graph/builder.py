@@ -27,9 +27,9 @@ from graph.nodes import (
 
 
 def after_fetch(state: DigestState) -> str:
-    """Conditional edge after fetch: skip to report if no papers found."""
+    """Conditional edge after fetch: skip entirely if no papers found."""
     if not state.get("papers"):
-        return "generate_report"
+        return END
     return "download"
 
 
@@ -94,7 +94,7 @@ def build_digest_graph():
         "fetch",
         after_fetch,
         {
-            "generate_report": "generate_report",
+            END: END,
             "download": "download",
         },
     )
