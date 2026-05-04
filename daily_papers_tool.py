@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-load_dotenv(override=True)
+load_dotenv(override=False)
 import sys
 import argparse
 from datetime import datetime
@@ -51,12 +51,13 @@ def run_daily_digest(date_str, model="moonshotai/kimi-k2.5", paper_limit=0, forc
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Hugging Face Daily Paper Digest Tool")
     parser.add_argument("--date", type=str, help="Date in YYYY-MM-DD format", default=datetime.now().strftime("%Y-%m-%d"))
-    parser.add_argument("--model", type=str, default="moonshotai/kimi-k2.5",
-                        help="LLM model ID for NVIDIA NIM (default: moonshotai/kimi-k2.5)")
+    parser.add_argument("--model", type=str, default=None,
+                        help="LLM model ID for NVIDIA NIM (default: from .env)")
     parser.add_argument("--limit", type=int, default=0,
                         help="Limit number of papers to process (default: 0 = all)")
     parser.add_argument("--force", action="store_true",
                         help="Force re-summarize all papers and overwrite existing DB entries")
     
     args = parser.parse_args()
-    run_daily_digest(args.date, model=args.model, paper_limit=args.limit, force_update=args.force)
+    model = args.model or os.getenv('LLM_MODEL', 'moonshotai/kimi-k2.5')
+    run_daily_digest(args.date, model=model, paper_limit=args.limit, force_update=args.force)

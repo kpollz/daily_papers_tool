@@ -4,7 +4,7 @@ LangGraph builder and conditional edge logic for the daily digest workflow.
 import os
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+load_dotenv(override=False)
 
 from langgraph.graph import StateGraph, END
 from langgraph.types import Send

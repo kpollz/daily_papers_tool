@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv(override=True)
+load_dotenv(override=False)
 
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -133,8 +133,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=str,
-        default="moonshotai/kimi-k2.5",
-        help="LLM model ID for NVIDIA NIM (overrides env variable, default: moonshotai/kimi-k2.5)"
+        default=None,
+        help="LLM model ID for NVIDIA NIM (overrides env variable, default: from .env)"
     )
     parser.add_argument(
         "--date",

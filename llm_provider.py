@@ -4,7 +4,7 @@ LLM Provider factory for NVIDIA NIM (OpenAI-compatible).
 import os
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+load_dotenv(override=False)
 
 from langchain_openai import ChatOpenAI
 
